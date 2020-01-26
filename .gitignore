@@ -1,0 +1,8 @@
+# Distribution / packaging
+.Python
+bin/
+include/
+lib/
+lib64/
+share/
+pyvenv.cfg
