@@ -1,34 +1,39 @@
 import pygame as pg
+from pygame.locals import QUIT, KEYUP, K_ESCAPE, Rect
+from pygame.draw import rect
 import king
 import queen
 import rook
 import bishop
 import knight
 import pawn
+import square
 
 # Define colours and constants
-black = (0,0,0)
-white = (255,255,255)
+light_brown = (250, 190, 120)
 brown = (150,75,0)
+board_width = board_height = 800
+squareCenters = []
 SQUARE_SIZE = 100
-BORDER_MARGIN = 25
+selected_piece = None
 
 # Initialize pygame
 pg.init()
 
 # Create the board and caption
-board = pg.display.set_mode((850, 850))
+board = pg.display.set_mode((800, 800))
 pg.display.set_caption("Chessboard")
 
 pieces = pg.sprite.Group()
+squares = pg.sprite.Group()
 
 def main():
 
     # Build the board and set the pieces
     buildboard(board)
-    getPieces(board)
-    #print(key_list)
+    #getPieces(board)
 
+    # Main game loop
     done = False
     while not done:
         for event in pg.event.get():
@@ -37,11 +42,14 @@ def main():
                 done = True
 
             elif event.type == pg.MOUSEBUTTONDOWN:
-                pos = pg.mouse.get_pos()
+                mouse_position = pg.mouse.get_pos()
                 for piece in pieces:
-                    if piece.rect.collidepoint(pos):
+                    if piece.rect.collidepoint(mouse_position):
                         piece.clicked = True
                         print('asuh')
+                for square in squares:
+                    if square.square_coords.collidepoint(mouse_position):
+                        print(square.square_id)
 
             elif event.type == pg.MOUSEBUTTONUP:
                 for piece in pieces:
@@ -50,41 +58,56 @@ def main():
 
             for piece in pieces:
                 if piece.clicked == True:
-                    pos = pg.mouse.get_pos()
-                    piece.rect.x = pos[0] - (piece.rect.width / 2)
-                    piece.rect.y = pos[1] - (piece.rect.height / 2)
+                    mouse_position = pg.mouse.get_pos()
+                    before_move_square = piece.square
+                    piece.rect.x = mouse_position[0] - (piece.rect.width / 2)
+                    piece.rect.y = mouse_position[1] - (piece.rect.height / 2)
             
-            pieces.draw(board)
+
             pg.display.flip()
     pg.quit()
 
-def buildboard(board):
-    # Create an 8x8 grid
-        # Square 0 is the square in the top left-hand corner of the screen. A8 in chess terms.  Square 8 is A7 etc...
-        # Every odd-numbered square is coloured white.
-        # Here row and column simply act as offsets for the colouring of the squares.
-        # I.e. Square 1 has an offset of 1 * SQUARE_SIZE + MARGIN in the x-direction (since it's in column 1)
-        # and an offset of 0 * SQUARE_SIZE + MARGIN in the y-direction (since it's in row 0).
-        square_num = 0
-        for row in range(8):
-            for column in range(8):
-                colour = brown
-                if square_num % 2 == 0:
-                    colour = white
-                pg.draw.rect(board, colour, (SQUARE_SIZE * column + BORDER_MARGIN, SQUARE_SIZE * row + BORDER_MARGIN, SQUARE_SIZE, SQUARE_SIZE))
-                square_num += 1
-            square_num -= 1 # This is needed to create a diagonal pattern across the board, otherwise we get strips (columns) of the same colour
+# Toggles between the two colours 
+def alternate():
+    while True:
+        yield brown
+        yield light_brown
 
+
+# Create an 8x8 grid
+def buildboard(board):
+
+    # Create a 'toggler'
+    alternator = alternate()
+
+    increment = board_width / 8
+    cur_colour = light_brown
+
+    coords = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+
+    # Starting at the top left-hand corner (0, 0), create the board    
+    for column in range(8):
+        for row in range(8):
+            new_square = square.Square(Rect(row * increment, column * increment, increment + 1, increment + 1), f'{coords[row]}{8 - column}')
+            if new_square not in squareCenters:
+                squareCenters.append(new_square)
+            if new_square.square_coords not in squares:
+                squares.add(new_square)
+            rect(board, cur_colour, new_square.square_coords)
+            cur_colour = next(alternator) 
+        cur_colour = next(alternator)
+
+# Places the pieces in their correct starting positions
 def getPieces(board):
     files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
     for column in range(8):
 
-        BACK_RANK_COORDS = (BORDER_MARGIN + (SQUARE_SIZE * column) + 25, BORDER_MARGIN + (SQUARE_SIZE * 7) + 25)
+        BACK_RANK_COORDS = ((SQUARE_SIZE * column) + 25, (SQUARE_SIZE * 7) + 25)
 
         # Pawns
-        p = pawn.Pawn((BORDER_MARGIN + (SQUARE_SIZE * column) + 25, BORDER_MARGIN + (SQUARE_SIZE * 6) + 25), f'{files[column]}2')
+        p = pawn.Pawn(((SQUARE_SIZE * column) + 25, (SQUARE_SIZE * 6) + 25), f'{files[column]}2')
         pieces.add(p)
-        board.blit(p.image, (BORDER_MARGIN + (SQUARE_SIZE * column) + 25, BORDER_MARGIN + (SQUARE_SIZE * 6) + 25))
+        board.blit(p.image, ((SQUARE_SIZE * column) + 25, (SQUARE_SIZE * 6) + 25))
 
         # Rooks
         if column == 0 or column == 7:
