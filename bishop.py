@@ -1,12 +1,17 @@
 import pygame as pg
 
 class Bishop(pg.sprite.Sprite):
-    def __init__(self, coords, _id):
+    def __init__(self, square, colour):
         super(Bishop, self).__init__()
-        pic = pg.image.load("./white_bishop.png")
-        self.image = pg.transform.scale(pic, (50, 50))
         self.clicked = False
-        self.rect = self.image.get_rect()
-        self.rect.x = coords[0]
-        self.rect.y = coords[1]
-        self.id = _id
+        self.name = 'Bishop'
+        #self.id = _id
+        self.colour = colour
+
+        if self.colour == 'white':
+            pic = pg.image.load("./white_bishop.png")
+        else:
+            pic = pg.image.load("./black_bishop.png")
+        
+        self.image = pg.transform.scale(pic, (50, 50))
+        self.rect = pg.Rect(square.x, square.y, 50, 50)

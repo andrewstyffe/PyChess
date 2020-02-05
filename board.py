@@ -1,13 +1,14 @@
 import pygame as pg
 from pygame.locals import QUIT, KEYUP, K_ESCAPE, Rect
 from pygame.draw import rect
+import chess_pieces
+import square
 import king
 import queen
 import rook
 import bishop
 import knight
 import pawn
-import square
 
 # Define colours and constants
 light_brown = (250, 190, 120)
@@ -30,8 +31,8 @@ squares = pg.sprite.Group()
 def main():
 
     # Build the board and set the pieces
-    buildboard(board)
-    #getPieces(board)
+    buildBoard(board)
+    setupBoard(board)
 
     # Main game loop
     done = False
@@ -44,12 +45,15 @@ def main():
             elif event.type == pg.MOUSEBUTTONDOWN:
                 mouse_position = pg.mouse.get_pos()
                 for piece in pieces:
+                    #print(piece.rect)
                     if piece.rect.collidepoint(mouse_position):
+                        print(piece.name)
                         piece.clicked = True
-                        print('asuh')
-                for square in squares:
-                    if square.square_coords.collidepoint(mouse_position):
-                        print(square.square_id)
+                        #print('asuh')
+                # for square in squares:
+                #     if square.coords.collidepoint(mouse_position):
+                #         print(square.coords.topleft)
+                #         #print(square.rank)
 
             elif event.type == pg.MOUSEBUTTONUP:
                 for piece in pieces:
@@ -59,7 +63,7 @@ def main():
             for piece in pieces:
                 if piece.clicked == True:
                     mouse_position = pg.mouse.get_pos()
-                    before_move_square = piece.square
+                    #before_move_square = piece.square
                     piece.rect.x = mouse_position[0] - (piece.rect.width / 2)
                     piece.rect.y = mouse_position[1] - (piece.rect.height / 2)
             
@@ -75,7 +79,7 @@ def alternate():
 
 
 # Create an 8x8 grid
-def buildboard(board):
+def buildBoard(board):
 
     # Create a 'toggler'
     alternator = alternate()
@@ -91,53 +95,48 @@ def buildboard(board):
             new_square = square.Square(Rect(row * increment, column * increment, increment + 1, increment + 1), f'{coords[row]}{8 - column}')
             if new_square not in squareCenters:
                 squareCenters.append(new_square)
-            if new_square.square_coords not in squares:
-                squares.add(new_square)
-            rect(board, cur_colour, new_square.square_coords)
+            squares.add(new_square)
+            rect(board, cur_colour, new_square.coords)
             cur_colour = next(alternator) 
         cur_colour = next(alternator)
 
+
 # Places the pieces in their correct starting positions
-def getPieces(board):
-    files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
-    for column in range(8):
+def setupBoard(board):
+    
+    # Get all squares of interest
+    eligible_squares = [square for square in squares if square.rank == '1' or square.rank == '2' or square.rank == '7' or square.rank == '8']
+    
+    for square in eligible_squares:
 
-        BACK_RANK_COORDS = ((SQUARE_SIZE * column) + 25, (SQUARE_SIZE * 7) + 25)
-
-        # Pawns
-        p = pawn.Pawn(((SQUARE_SIZE * column) + 25, (SQUARE_SIZE * 6) + 25), f'{files[column]}2')
-        pieces.add(p)
-        board.blit(p.image, ((SQUARE_SIZE * column) + 25, (SQUARE_SIZE * 6) + 25))
-
-        # Rooks
-        if column == 0 or column == 7:
-            r = rook.Rook(BACK_RANK_COORDS, f'{files[column]}1')
-            pieces.add(r)
-            board.blit(r.image, BACK_RANK_COORDS)
-        
-        # Knights
-        elif column == 1 or column == 6:
-            n = knight.Knight(BACK_RANK_COORDS, f'{files[column]}1')
-            pieces.add(n)
-            board.blit(n.image, BACK_RANK_COORDS)
-        
-        #Knights
-        elif column == 2 or column == 5:
-            b = bishop.Bishop(BACK_RANK_COORDS, f'{files[column]}1')
-            pieces.add(b)
-            board.blit(b.image, BACK_RANK_COORDS)
-
-        # Queen
-        elif column == 3:
-            q = queen.Queen(BACK_RANK_COORDS, f'{files[column]}1')
-            pieces.add(q)
-            board.blit(q.image, BACK_RANK_COORDS)
-
-        # King
+        # Set the colour
+        if square.rank == '1' or square.rank == '2':
+            colour = 'white'
         else:
-            k = king.King(BACK_RANK_COORDS, f'{files[column]}1')
-            pieces.add(k)
-            board.blit(k.image, BACK_RANK_COORDS)
+            colour = 'black'
+
+        # Determine which piece to be created based on rank and column
+        if square.rank == '2' or square.rank == '7':
+            piece = pawn.Pawn(square, colour)
+
+        else:
+            if square.file == 'A' or square.file == 'H':
+                piece = rook.Rook(square, colour)
+
+            elif square.file == 'B' or square.file == 'G':
+                piece = knight.Knight(square, colour)
+
+            elif square.file == 'C' or square.file == 'F':
+                piece = bishop.Bishop(square, colour)
+        
+            elif square.file == 'D':
+                piece = queen.Queen(square, colour)
+
+            else:
+                piece = king.King(square, colour)
+        
+        pieces.add(piece)
+        board.blit(piece.image, (square.x + 25, square.y + 25))
 
 if __name__ == "__main__":
     main() 
