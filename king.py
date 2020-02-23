@@ -1,5 +1,4 @@
 import pygame as pg
-import bishop
 from chess_pieces import *
 
 class King(ChessPiece):
@@ -17,7 +16,6 @@ class King(ChessPiece):
         self.image = pg.image.load(f"./{self.colour}_{self.name.lower()}.png")
         self.image = pg.transform.scale(self.image, (50, 50))
         self.rect = self.image.get_rect(center = self.curSquare.center)
-
 
 
     def get_legal_moves(self, squares, pieces, our_king):

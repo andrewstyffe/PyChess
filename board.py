@@ -1,7 +1,7 @@
 import pygame as pg
 from pygame.locals import QUIT, KEYUP, K_ESCAPE, Rect
 from pygame.draw import rect
-import chess_pieces
+from chess_pieces import *
 import square
 import king
 import queen
@@ -253,7 +253,7 @@ def castle(square_of_interest, selected_piece, fromSquare, team_alternator, cast
 
     # Update the selected king and the accompanying rook.
     pg.draw.rect(board, rook_of_interest.curSquare.colour, (rook_of_interest.curSquare.x, rook_of_interest.curSquare.y, 100, 100))
-    rook_of_interest.update(board, rook_of_interest.curSquare, get_squares(f'{new_file}{square_of_interest.rank}'))
+    rook_of_interest.update(board, rook_of_interest.curSquare, selected_piece.get_square(f'{new_file}{square_of_interest.rank}', squares))
     rook_of_interest.draw(board)
     
     selected_piece = format_move(selected_piece, square_of_interest, fromSquare, team_alternator, castling, our_king, opponents_king)
@@ -283,12 +283,6 @@ def format_move(selected_piece, square_of_interest, fromSquare, team_alternator,
         return selected_piece
     else:
         return next(team_alternator), selected_piece
-
-
-def get_squares(square_id):
-    for square in squares:
-        if square.id == square_id:
-            return square
 
 # Toggles between the two teams 
 def alternate_teams():
