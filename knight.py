@@ -1,6 +1,4 @@
 import pygame as pg
-import copy
-import helpers
 from chess_pieces import *
 
 class Knight(ChessPiece):

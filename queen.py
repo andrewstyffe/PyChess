@@ -1,6 +1,5 @@
 
 import pygame as pg
-import bishop
 from chess_pieces import *
 
 

@@ -1,46 +1,39 @@
 import pygame as pg
+from chess_pieces import *
 
-files = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
-
-class Pawn(pg.sprite.Sprite):
+# Describes the various attributes of a pawn and enforces the rules of a pawn on the object
+# TODO: enforce en-passant
+# TODO: Fix all this code... Not great.
+class Pawn(ChessPiece):
     def __init__(self, square, colour):
-        super(Pawn, self).__init__()
-        self.clicked = False
+        super(Pawn, self).__init__(self, square, colour)
         self.name = 'Pawn'
-        #self.id = _id
-        self.colour = colour
-        self.curSquare = square
-        self.fromSquare = None
         
         # Just for pawns
         self.first_move = True
-        self.legal_moves = []
 
-        if self.colour == 'white':
-            self.image = pg.image.load("./white_pawn.png")
-        else:
-            self.image = pg.image.load("./black_pawn.png")
-        
+        # Assign a picture to the pawn
+        self.image = pg.image.load(f"./{self.colour}_{self.name.lower()}.png")
         self.image = pg.transform.scale(self.image, (50, 50))
         self.rect = self.image.get_rect(center = self.curSquare.center)
 
-    def drag(self, board, cursor):
-        self.rect = self.rect.move(cursor[0], cursor[1])
 
-    def draw(self, surface):
-        surface.blit(self.image, self.rect.topleft)
+    # Returns the index that a given square's file has in the list of files
+    def get_file_index(self, curSquare):
+        index = 0
+        for file_index, _file in enumerate(files):
+            if _file == curSquare.file:
+                index = file_index
+                break
+        return index
 
-    def update(self, board, fromSquare, newSquare):
-        self.curSquare = newSquare
-        self.rect.center = newSquare.center
-        self.fromSquare = fromSquare
-        #board.blit(self.image, curSquare.coords.center)
-        # TODO update self.move_list
-        newSquare.isOccupied = True
-        
-        newSquare.occupied_colour = self.colour
-        fromSquare.isOccupied = False
+    # Returns the corresponding square given a square id
+    def get_square(self, chess_coord, squares):
+        for square in squares:
+            if square.id == chess_coord:
+                return square
 
+    # Returns True or False corresponding to the square directly above or below curSquare (depending on perspective) being occupied by a piece.
     def get_next_square(self, curSquare, squares):
         curRank = int(self.curSquare.rank)
 
@@ -51,6 +44,7 @@ class Pawn(pg.sprite.Sprite):
             if square.id == f'{curSquare.file}{curRank - 1}':
                 return square.isOccupied 
 
+    # Deals with taking opponent's pieces, since pawns take differently from how they normally move.
     def take_opponent_piece(self, curSquare, squares):
         curRank = int(self.curSquare.rank)
         index = self.get_file_index(curSquare)
@@ -66,10 +60,16 @@ class Pawn(pg.sprite.Sprite):
                         print(f'{square.id} is {square.isOccupied} by a {square.occupied_colour} piece! Take it!')
                         self.legal_moves.append(square.id)
 
+                    if square.id in self.legal_moves and square.isOccupied and square.rank < self.curSquare.rank:
+                        self.legal_moves.remove(square.id)
+
                 # For the 'H' file, if the square diagonally-up from curSquare is occupied by an opponent's piece, then add that square to legal_moves
                 elif curSquare.file == 'H':
                     if square.id == f'{files[index - 1]}{curRank + 1}' and square.isOccupied and square.occupied_colour != self.colour:
                         self.legal_moves.append(square.id)
+
+                    if square.id in self.legal_moves and square.isOccupied and square.rank < self.curSquare.rank:
+                        self.legal_moves.remove(square.id)
                 
                 # For any other file, if the squares diagonally-up from curSquare are occupied by an opponent's piece, then add them square to legal_moves
                 else:
@@ -91,10 +91,16 @@ class Pawn(pg.sprite.Sprite):
                     if square.id == f'{files[index + 1]}{curRank - 1}' and square.isOccupied and square.occupied_colour != self.colour:
                         self.legal_moves.append(square.id)
 
+                    if square.id in self.legal_moves and square.isOccupied and square.rank > self.curSquare.rank:
+                        self.legal_moves.remove(square.id)
+
                 # For the 'H' file, if the square diagonally-up from curSquare is occupied by an opponent's piece, then add that square to legal_moves
                 elif curSquare.file == 'H':
                     if square.id == f'{files[index - 1]}{curRank - 1}' and square.isOccupied and square.occupied_colour != self.colour:
                         self.legal_moves.append(square.id)
+
+                    if square.id in self.legal_moves and square.isOccupied and square.rank > self.curSquare.rank:
+                        self.legal_moves.remove(square.id)
                 
                 # For any other file, if the squares diagonally-up from curSquare are occupied by an opponent's piece, then add them square to legal_moves
                 else:
@@ -107,20 +113,12 @@ class Pawn(pg.sprite.Sprite):
                             if square.id in self.legal_moves and not square.isOccupied:
                                 self.legal_moves.remove(square.id)
 
-    def get_file_index(self, curSquare):
-        index = 0
-        for file_index, _file in enumerate(files):
-            if _file == curSquare.file:
-                index = file_index
-                break
-        return index
 
-    def get_square(self, chess_coord, squares):
-        for square in squares:
-            if square.id == chess_coord:
-                return square
 
-    def get_legal_moves(self, squares):
+    # Returns a list of squares available for a given pawn to move to
+    # Takes into account everything except for en-passant
+    # TODO: Incorporate an en-passant feature
+    def get_legal_moves(self, squares, our_king):
 
         curRank = int(self.curSquare.rank)
         index = self.get_file_index(self.curSquare)
@@ -128,6 +126,7 @@ class Pawn(pg.sprite.Sprite):
         # First, check diagonals for taking-opportunities
         self.take_opponent_piece(self.curSquare, squares)
 
+        # White pieces
         if self.colour == 'white':
 
             # Check first move rule for pawns
@@ -162,7 +161,8 @@ class Pawn(pg.sprite.Sprite):
             # If our current square is in legal_moves, then remove it 
             if f'{self.curSquare.file}{self.curSquare.rank}' in self.legal_moves:
                 self.legal_moves.remove(f'{self.curSquare.file}{self.curSquare.rank}')
-            
+        
+        # Black pieces
         else:
 
             if self.first_move:
@@ -198,4 +198,3 @@ class Pawn(pg.sprite.Sprite):
                 self.legal_moves.remove(f'{self.curSquare.file}{self.curSquare.rank}')
 
         return self.legal_moves
-    

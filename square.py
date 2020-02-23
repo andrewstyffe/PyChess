@@ -9,7 +9,7 @@ class Square(pg.sprite.Sprite):
         self.coords = coords
         self.id = square_id
         self.file = square_id[0]
-        self.rank = square_id[1]
+        self.rank = int(square_id[1])
         self.colour = colour
         self.topleft = coords.topleft
         self.center = coords.center
