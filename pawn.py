@@ -9,8 +9,8 @@ class Pawn(ChessPiece):
         super(Pawn, self).__init__(self, square, colour)
         self.name = 'Pawn'
         
-        # Just for pawns
-        self.first_move = True
+        # Just for pawns. Initialize to false, so that on startup, it isn't set to false.
+        self.first_move = False
 
         # Assign a picture to the pawn
         self.image = pg.image.load(f"./{self.colour}_{self.name.lower()}.png")
@@ -27,103 +27,75 @@ class Pawn(ChessPiece):
                 break
         return index
 
-    # Returns the corresponding square given a square id
-    def get_square(self, chess_coord, squares):
-        for square in squares:
-            if square.id == chess_coord:
-                return square
-
     # Returns True or False corresponding to the square directly above or below curSquare (depending on perspective) being occupied by a piece.
     def get_next_square(self, curSquare, squares):
-        curRank = int(self.curSquare.rank)
-
         for square in squares:
             if self.colour == 'white':
-                if square.id == f'{curSquare.file}{curRank + 1}':
+                if square.id == f'{curSquare.file}{self.curSquare.rank + 1}':
                     return square.isOccupied
-            if square.id == f'{curSquare.file}{curRank - 1}':
+            if square.id == f'{curSquare.file}{self.curSquare.rank - 1}':
                 return square.isOccupied 
 
     # Deals with taking opponent's pieces, since pawns take differently from how they normally move.
     def take_opponent_piece(self, curSquare, squares):
-        curRank = int(self.curSquare.rank)
         index = self.get_file_index(curSquare)
 
         for square in squares:
 
-            # For white pawns
+            # For white pawns.
             if self.colour == 'white':
 
-                # For the 'A' file, if the square diagonally-up from curSquare is occupied by an opponent's piece, then add that square to legal_moves
+                # For the 'A' file, if the square diagonally-up from curSquare is occupied by an opponent's piece, then add that square to legal_moves.
                 if curSquare.file == 'A':
-                    if square.id == f'{files[index + 1]}{curRank + 1}' and square.isOccupied and f'{files[index + 1]}{curRank + 1}' not in self.legal_moves:
-                        print(f'{square.id} is {square.isOccupied} by a {square.occupied_colour} piece! Take it!')
-                        self.legal_moves.append(square.id)
+                    if square.id == f'{files[index + 1]}{self.curSquare.rank + 1}' and square.isOccupied and square not in self.legal_moves:
+                        if square.occupied_colour != self.colour:
+                            self.legal_moves.append(square)
 
-                    if square.id in self.legal_moves and square.isOccupied and square.rank < self.curSquare.rank:
-                        self.legal_moves.remove(square.id)
-
-                # For the 'H' file, if the square diagonally-up from curSquare is occupied by an opponent's piece, then add that square to legal_moves
+                # For the 'H' file, if the square diagonally-up from curSquare is occupied by an opponent's piece, then add that square to legal_moves.
                 elif curSquare.file == 'H':
-                    if square.id == f'{files[index - 1]}{curRank + 1}' and square.isOccupied and square.occupied_colour != self.colour:
-                        self.legal_moves.append(square.id)
-
-                    if square.id in self.legal_moves and square.isOccupied and square.rank < self.curSquare.rank:
-                        self.legal_moves.remove(square.id)
+                    if square.id == f'{files[index - 1]}{self.curSquare.rank + 1}' and square.isOccupied and square not in self.legal_moves:
+                        if square.occupied_colour != self.colour:
+                            self.legal_moves.append(square)
                 
-                # For any other file, if the squares diagonally-up from curSquare are occupied by an opponent's piece, then add them square to legal_moves
+                # For any other file, if the squares diagonally-up from curSquare are occupied by an opponent's piece, then add them square to legal_moves.
                 else:
-                    if square.id == f'{files[index + 1]}{curRank + 1}' or square.id == f'{files[index - 1]}{curRank + 1}':
-                        if square.isOccupied and square.occupied_colour != self.colour and square.id not in self.legal_moves:
-                            self.legal_moves.append(square.id)
-                        
-                        # For when an opponent's piece was eligible to be taken, but wasn't, and has now moved.  That square needs to be removed from legal_moves.    
-                        else:
-                            if square.id in self.legal_moves and not square.isOccupied:
-                                self.legal_moves.remove(square.id)
+                    if square.id == f'{files[index + 1]}{self.curSquare.rank + 1}' or square.id == f'{files[index - 1]}{self.curSquare.rank + 1}':
+                        if square.isOccupied and square.occupied_colour != self.colour and square not in self.legal_moves:
+                            self.legal_moves.append(square)
 
 
-            # For black pawns
+            # For black pawns.
             else:
 
                 # For the 'A' file, if the square diagonally-down from curSquare is occupied by an opponent's piece, then add that square to legal_moves
                 if curSquare.file == 'A':
-                    if square.id == f'{files[index + 1]}{curRank - 1}' and square.isOccupied and square.occupied_colour != self.colour:
-                        self.legal_moves.append(square.id)
+                    if square.id == f'{files[index + 1]}{self.curSquare.rank - 1}' and square.isOccupied and square not in self.legal_moves:
+                        if square.occupied_colour != self.colour:
+                            self.legal_moves.append(square)
 
-                    if square.id in self.legal_moves and square.isOccupied and square.rank > self.curSquare.rank:
-                        self.legal_moves.remove(square.id)
-
-                # For the 'H' file, if the square diagonally-up from curSquare is occupied by an opponent's piece, then add that square to legal_moves
+                # For the 'H' file, if the square diagonally-down from curSquare is occupied by an opponent's piece, then add that square to legal_moves
                 elif curSquare.file == 'H':
-                    if square.id == f'{files[index - 1]}{curRank - 1}' and square.isOccupied and square.occupied_colour != self.colour:
-                        self.legal_moves.append(square.id)
-
-                    if square.id in self.legal_moves and square.isOccupied and square.rank > self.curSquare.rank:
-                        self.legal_moves.remove(square.id)
+                    if square.id == f'{files[index - 1]}{self.curSquare.rank - 1}' and square.isOccupied and square not in self.legal_moves:
+                        if square.occupied_colour != self.colour:
+                            self.legal_moves.append(square)
                 
-                # For any other file, if the squares diagonally-up from curSquare are occupied by an opponent's piece, then add them square to legal_moves
+                # For any other file, if the squares diagonally-down from curSquare are occupied by an opponent's piece, then add them square to legal_moves.
                 else:
-                    if square.id == f'{files[index + 1]}{curRank - 1}' or square.id == f'{files[index - 1]}{curRank - 1}':
-                        if square.isOccupied and square.occupied_colour != self.colour and square.id not in self.legal_moves:
-                            self.legal_moves.append(square.id)
-                        
-                        # For when an opponent's piece was eligible to be taken, but wasn't, and has now moved.  That square needs to be removed from legal_moves.    
-                        else:
-                            if square.id in self.legal_moves and not square.isOccupied:
-                                self.legal_moves.remove(square.id)
-
+                    if square.id == f'{files[index + 1]}{self.curSquare.rank - 1}' or square.id == f'{files[index - 1]}{self.curSquare.rank - 1}':
+                        if square.isOccupied and square.occupied_colour != self.colour and square not in self.legal_moves:
+                            self.legal_moves.append(square)
 
 
     # Returns a list of squares available for a given pawn to move to
     # Takes into account everything except for en-passant
     # TODO: Incorporate an en-passant feature
+    # TODO: Incorporate a promotion feature.
     def get_legal_moves(self, squares, our_king):
 
-        curRank = int(self.curSquare.rank)
+        self.legal_moves = []
         index = self.get_file_index(self.curSquare)
 
-        # First, check diagonals for taking-opportunities
+        # First, check diagonals for any taking-opportunities.
         self.take_opponent_piece(self.curSquare, squares)
 
         # White pieces
@@ -132,69 +104,57 @@ class Pawn(ChessPiece):
             # Check first move rule for pawns
             if self.first_move:
 
-                # For the case that a pawn has advanced to 2 squares in front of a pawn that hasn't yet moved. We can't add that sqaure to legal_moves.
-                # If that square is not occupied then no issue.
-                if not self.get_square(f'{self.curSquare.file}{curRank + 2}', squares).isOccupied:
-                    self.legal_moves.append(f'{self.curSquare.file}{curRank + 2}')
-                    self.first_move = False
+                # If the selected pawn hasn't moved yet and both the squares one square up and two squares up are unoccupied, then add the square two square up to legal_moves.
+                one_square_up = self.get_square(f'{self.curSquare.file}{self.curSquare.rank + 1}', squares)
+                two_squares_up = self.get_square(f'{self.curSquare.file}{self.curSquare.rank + 2}', squares)
                 
-                # If it is occupied then simply set first_move to false since one square up from curSquare will be added to legal_moves in a check below.
-                else:
-                    self.first_move = False
+                if not two_squares_up.isOccupied and not one_square_up.isOccupied:
+                    self.legal_moves.append(two_squares_up)
 
             # If one square up from curSquare isn't in legal_moves and that square isn't occupied then add it to legal_moves
-            if f'{self.curSquare.file}{curRank + 1}' not in self.legal_moves and not self.get_next_square(self.curSquare, squares):
-                self.legal_moves.append(f'{self.curSquare.file}{curRank + 1}')
+            one_square_up = self.get_square(f'{self.curSquare.file}{self.curSquare.rank + 1}', squares)
+            
+            if one_square_up not in self.legal_moves and not one_square_up.isOccupied:
+                self.legal_moves.append(one_square_up)
             
             # If one or two squares down from curSquare is in legal_moves, then remove it from legal_moves since pawns can't move backwards
-            if f'{self.curSquare.file}{curRank - 1}' in self.legal_moves:
-                self.legal_moves.remove(f'{self.curSquare.file}{curRank - 1}')
-            if f'{self.curSquare.file}{curRank - 2}' in self.legal_moves:
-                self.legal_moves.remove(f'{self.curSquare.file}{curRank - 2}')
-
-            # If the square on either side of curSquare is in legal_moves, then remove it from legal_moves since pawns can't move sideways
-            if index < 7 and f'{files[index + 1]}{curRank}' in self.legal_moves:
-                self.legal_moves.remove(f'{files[index + 1]}{curRank}')
-            if index > 0 and f'{files[index - 1]}{curRank}' in self.legal_moves:
-                self.legal_moves.remove(f'{files[index - 1]}{curRank}')
-
-            # If our current square is in legal_moves, then remove it 
-            if f'{self.curSquare.file}{self.curSquare.rank}' in self.legal_moves:
-                self.legal_moves.remove(f'{self.curSquare.file}{self.curSquare.rank}')
+            one_square_down = self.get_square(f'{self.curSquare.file}{self.curSquare.rank - 1}', squares)
+            two_squares_down = self.get_square(f'{self.curSquare.file}{self.curSquare.rank - 2}', squares)
+            
+            if one_square_down in self.legal_moves:
+                self.legal_moves.remove(one_square_down)
+            if two_squares_down in self.legal_moves:
+                self.legal_moves.remove(two_squares_down)
         
         # Black pieces
         else:
 
             if self.first_move:
                 
-                # For the case that a pawn has advanced to 2 squares in front of a pawn that hasn't yet moved. We can't add that sqaure to legal_moves.
-                # If that square is not occupied then no issue.
-                if not self.get_square(f'{self.curSquare.file}{curRank - 2}', squares).isOccupied:
-                    self.legal_moves.append(f'{self.curSquare.file}{curRank - 2}')
-                    self.first_move = False
+                # If the selected pawn hasn't moved yet and both the squares one square up and two squares up are unoccupied, then add the square two square up to legal_moves.
+                one_square_down = self.get_square(f'{self.curSquare.file}{self.curSquare.rank - 1}', squares)
+                two_squares_down = self.get_square(f'{self.curSquare.file}{self.curSquare.rank - 2}', squares)
                 
-                # If it is occupied then simply set first_move to false since one square up from curSquare will be added to legal_moves in a check below.
-                else:
-                    self.first_move = False
+                if not two_squares_down.isOccupied and not one_square_down.isOccupied:
+                    self.legal_moves.append(two_squares_down)
             
             # If one square down from curSquare isn't in legal_moves and that square isn't occupied then add it to legal_moves
-            if f'{self.curSquare.file}{curRank - 1}' not in self.legal_moves and not self.get_next_square(self.curSquare, squares):
-                self.legal_moves.append(f'{self.curSquare.file}{curRank - 1}')
+            one_square_down = self.get_square(f'{self.curSquare.file}{self.curSquare.rank - 1}', squares)
+
+            if one_square_down not in self.legal_moves and not self.get_next_square(self.curSquare, squares):
+                self.legal_moves.append(one_square_down)
             
             # If one or two squares up from curSquare is in legal_moves, then remove it from legal_moves since pawns can't move backwards
-            if f'{self.curSquare.file}{curRank + 1}' in self.legal_moves:
-                self.legal_moves.remove(f'{self.curSquare.file}{curRank + 1}')
-            if f'{self.curSquare.file}{curRank + 2}' in self.legal_moves:
-                self.legal_moves.remove(f'{self.curSquare.file}{curRank + 2}')
+            one_square_up = self.get_square(f'{self.curSquare.file}{self.curSquare.rank + 1}', squares)
+            two_squares_up = self.get_square(f'{self.curSquare.file}{self.curSquare.rank + 2}', squares)
 
-            # If the square on either side of curSquare is in legal_moves, then remove it from legal_moves since pawns can't move sideways
-            if index < 7 and f'{files[index + 1]}{curRank}' in self.legal_moves:
-                self.legal_moves.remove(f'{files[index + 1]}{curRank}')
-            if index > 0 and f'{files[index - 1]}{curRank}' in self.legal_moves:
-                self.legal_moves.remove(f'{files[index - 1]}{curRank}')
+            if one_square_up in self.legal_moves:
+                self.legal_moves.remove(one_square_up)
+            if two_squares_up in self.legal_moves:
+                self.legal_moves.remove(two_squares_up)
 
-            # If our current square is in legal_moves, then remove it 
-            if f'{self.curSquare.file}{self.curSquare.rank}' in self.legal_moves:
-                self.legal_moves.remove(f'{self.curSquare.file}{self.curSquare.rank}')
+        # If the selected pawn's current square is in legal_moves then remove it.
+        if self.curSquare in self.legal_moves:
+            self.legal_moves.remove(self.curSquare)
 
-        return self.legal_moves
+        return [square.id for square in self.legal_moves]

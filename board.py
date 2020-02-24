@@ -141,86 +141,73 @@ def main():
                 up_mouse_position = pg.mouse.get_pos()
                 for square_of_interest in squares:
                     if square_of_interest.coords.collidepoint(up_mouse_position) and selected_piece:
-                        
 
-                        if selected_piece.name == 'Pawn':
-                            if square_of_interest.id in selected_piece.legal_moves and square_of_interest.id != selected_piece.curSquare.id:  
-                                turn, selected_piece = format_move(selected_piece, square_of_interest, fromSquare, team_alternator, castling, our_king, opponents_king)
+                        # Deals with castling
+                        if selected_piece.name == 'King' and square_of_interest.id != selected_piece.curSquare.id:
+
+                            # If the selected square represents a legal move for the selected king.
+                            if square_of_interest in selected_piece.legal_moves:
+
+                                # The case where the selected king is castling.
+                                if files_dict[selected_piece.curSquare.file] == files_dict[square_of_interest.file] + 2 or files_dict[selected_piece.curSquare.file] == files_dict[square_of_interest.file] - 2:
+                                    castling = True
+                                    turn, selected_piece = castle(square_of_interest, selected_piece, fromSquare, team_alternator, castling, our_king, opponents_king)
+                                    
+                                # The case where the selected king is making a non-castling move.
+                                else:
+                                    turn, selected_piece = format_move(selected_piece, square_of_interest, fromSquare, team_alternator, castling, our_king, opponents_king)
+                            # If the square we clicked on isn't a legal move for the selected king, then put the king back to its starting square.
+                            else:
+                                print('Invalid move. Try again.')
+                                selected_piece.update(board, fromSquare, fromSquare)
+                                selected_piece.first_move = True
+                                selected_piece.draw(board)
+                                selected_piece = None
+                        
+                        # For every piece that is not a king.
+                        elif selected_piece:
                             
-                            # If the square we clicked on isn't a legal move for the selected piece, then put the piece back to its starting square.
-                            elif square_of_interest.id not in selected_piece.legal_moves:
+                            # If the square of interest represents a legal move for the selected piece.
+                            if square_of_interest in selected_piece.legal_moves:
+                                turn, selected_piece = format_move(selected_piece, square_of_interest, fromSquare, team_alternator, castling, our_king, opponents_king)
+
+                            # If the square of interest represents an illegal move for the selected piece, then return that piece to its fromSquare.
+                            else:
                                 print('Invalid move. Try again.')
                                 selected_piece.update(board, fromSquare, fromSquare)
                                 selected_piece.draw(board)
                                 selected_piece = None
-                        else:
-
-                            # Deals with castling
-                            if selected_piece.name == 'King' and square_of_interest.id != selected_piece.curSquare.id:
-
-                                # If the selected square represents a legal move for the selected king.
-                                if square_of_interest in selected_piece.legal_moves:
-
-                                    # The case where the selected king is castling.
-                                    if files_dict[selected_piece.curSquare.file] == files_dict[square_of_interest.file] + 2 or files_dict[selected_piece.curSquare.file] == files_dict[square_of_interest.file] - 2:
-                                        castling = True
-                                        turn, selected_piece = castle(square_of_interest, selected_piece, fromSquare, team_alternator, castling, our_king, opponents_king)
-                                        
-                                    # The case where the selected king is making a non-castling move.
-                                    else:
-                                        turn, selected_piece = format_move(selected_piece, square_of_interest, fromSquare, team_alternator, castling, our_king, opponents_king)
-                                # If the square we clicked on isn't a legal move for the selected king, then put the king back to its starting square.
-                                else:
-                                    print('Invalid move. Try again.')
-                                    selected_piece.update(board, fromSquare, fromSquare)
-                                    selected_piece.first_move = True
-                                    selected_piece.draw(board)
-                                    selected_piece = None
-                            
-                            # For every piece that is not a king.
-                            elif selected_piece:
-                                
-                                # If the square of interest represents a legal move for the selected piece.
-                                if square_of_interest in selected_piece.legal_moves:
-                                    turn, selected_piece = format_move(selected_piece, square_of_interest, fromSquare, team_alternator, castling, our_king, opponents_king)
-                                
-                                # If the square of interest represents an illegal move for the selected piece, then return that piece to its fromSquare.
-                                else:
-                                    print('Invalid move. Try again.')
-                                    selected_piece.update(board, fromSquare, fromSquare)
-                                    selected_piece.draw(board)
-                                    selected_piece = None
+                    
+                    our_king.in_check = False
+                    # If we are in check, then reset all of the king's variables to being False
+                    if our_king and our_king.in_check:
+                        print('Our king is in check.')
                         
-                        our_king.in_check = False
-                        # If we are in check, then reset all of the king's variables to being False
-                        if our_king and our_king.in_check:
-                            print('Our king is in check.')
-                            
-                            if our_king.checking_piece.name == 'Bishop':
+                        if our_king.checking_piece.name == 'Bishop':
+                            our_king.in_check_along_diagonal = False
+
+                        elif our_king.checking_piece.name == 'Rook':
+
+                            if our_king.curSquare.file == piece.curSquare.file:
+                                our_king.in_check_along_file = False
+
+                            elif our_king.curSquare.rank == piece.curSquare.rank:
+                                our_king.in_check_along_rank = False
+
+                        elif our_king.checking_piece.name == 'Queen':
+
+                            if our_king.curSquare.file == piece.curSquare.file:
+                                our_king.in_check_along_file = False
+
+                            elif our_king.curSquare.rank == piece.curSquare.rank:
+                                our_king.in_check_along_rank = False
+
+                            elif our_king.curSquare.diagonals in piece.curSquare.diagonals:
                                 our_king.in_check_along_diagonal = False
 
-                            elif our_king.checking_piece.name == 'Rook':
-
-                                if our_king.curSquare.file == piece.curSquare.file:
-                                    our_king.in_check_along_file = False
-
-                                elif our_king.curSquare.rank == piece.curSquare.rank:
-                                    our_king.in_check_along_rank = False
-
-                            elif our_king.checking_piece.name == 'Queen':
-
-                                if our_king.curSquare.file == piece.curSquare.file:
-                                    our_king.in_check_along_file = False
-
-                                elif our_king.curSquare.rank == piece.curSquare.rank:
-                                    our_king.in_check_along_rank = False
-
-                                elif our_king.curSquare.diagonals in piece.curSquare.diagonals:
-                                    our_king.in_check_along_diagonal = False
-
-                            elif our_king.checking_piece.name == 'Pawn':
-                                our_king.in_check_along_diagonal = False
-            
+                        elif our_king.checking_piece.name == 'Pawn':
+                            our_king.in_check_along_diagonal = False
+        
             pg.display.update()
     pg.quit()
 
@@ -270,6 +257,8 @@ def format_move(selected_piece, square_of_interest, fromSquare, team_alternator,
     if selected_piece.name == 'King':
         print(f'Now its available moves are {selected_piece.get_legal_moves(squares, pieces, our_king)}')
     else:
+        if selected_piece.name == 'Pawn':
+            selected_piece.first_move = False
         print(f'Now its available moves are {selected_piece.get_legal_moves(squares, our_king)}')
     
     if selected_piece.name != 'Pawn' and opponents_king and opponents_king.curSquare in selected_piece.legal_moves:
@@ -277,6 +266,7 @@ def format_move(selected_piece, square_of_interest, fromSquare, team_alternator,
 
     print(f'{selected_piece.name} moved from {fromSquare.id} to {square_of_interest.id}.  Its new square is {selected_piece.curSquare.id}')
     print('\n----------------------\n')
+    
     selected_piece = None
 
     if castling:
@@ -376,7 +366,10 @@ def setupBoard(board):
             piece.get_legal_moves(squares, pieces, None)
             #print(f'{piece.colour} {piece.name} has these moves available to it {piece.get_legal_moves(squares, pieces)}')
         else:
+            print(piece.name)
             piece.get_legal_moves(squares, None)
+            if piece.name == 'Pawn':
+                piece.first_move = True
             #print(f'{piece.colour} {piece.name} has these moves available to it {piece.get_legal_moves(squares)}')
 
     return white_king, black_king
