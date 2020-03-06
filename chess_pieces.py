@@ -49,8 +49,16 @@ class ChessPiece(pg.sprite.Sprite):
         self.curSquare = square
         self.fromSquare = None
         self.legal_moves = []
-        #self.is_pinned = False
+        self.legal_move_copy = []
+        self.protected_squares = []
+        self.our_king = None
+        self.opponents_king = None
 
+        self.pinned_along_diagonal = False
+        self.pinned_along_file = False
+        self.pinned_along_rank = False
+        self.pinning_piece = None
+    
     # Move pawn image with the cursor
     def drag(self, board, cursor):
         self.rect = self.rect.move(cursor[0], cursor[1])
@@ -63,7 +71,6 @@ class ChessPiece(pg.sprite.Sprite):
     def update(self, board, fromSquare, newSquare):
 
         if fromSquare == newSquare:
-            print('yup')
             self.curSquare = fromSquare
             self.rect.center = fromSquare.center
             self.fromSquare = None
@@ -162,7 +169,7 @@ class ChessPiece(pg.sprite.Sprite):
 
         # # Get the squares on the same diagonal(s) as the square of interest
         # if square_of_interest.id != self.curSquare.id:
-        #     self.get_diagonal_squares(square_of_interest, squares)
+        #     self.get_diagonal_squares(square_of_interest)
 
         # Get the closest occupied squares to the square of interest.
         leftmost_pos_occupied, rightmost_pos_occupied, leftmost_neg_occupied, rightmost_neg_occupied = self.get_closest_occupied_diag(square_of_interest)
@@ -292,7 +299,7 @@ class ChessPiece(pg.sprite.Sprite):
 
 
     # Gets the closest occupied squares on the same file as the selected rook.
-    def get_closest_occupied_file(self, file_squares):
+    def get_closest_occupied_file(self, piece_of_interest, file_squares):
 
         # Identify the closest squares on the selected rook's file that are occupied both above and below the rook.
         next_piece_above_on_file = None
@@ -306,30 +313,30 @@ class ChessPiece(pg.sprite.Sprite):
 
             # Determine the closest piece that lies above the selected rook.        
             for square in file_squares:
-                if square.isOccupied and square.rank > self.curSquare.rank:
+                if square.isOccupied and square.rank > piece_of_interest.curSquare.rank:
                     next_piece_above_on_file = square
 
             # Determine the closest piece that lies below the selected rook.
-            for square in file_squares:
-                if square.isOccupied and square.rank < self.curSquare.rank:
+            for square in reversed_file_squares:
+                if square.isOccupied and square.rank < piece_of_interest.curSquare.rank:
                     next_piece_below_on_file = square
 
         else:
             
             # Determine the closest piece that lies above the selected rook.
             for square in file_squares:
-                if square.isOccupied and square.rank > self.curSquare.rank:
+                if square.isOccupied and square.rank > piece_of_interest.curSquare.rank:
                     next_piece_above_on_file = square
 
             # Determine the closest piece that lies below the selected rook.        
             for square in reversed_file_squares:
-                if square.isOccupied and square.rank < self.curSquare.rank:
+                if square.isOccupied and square.rank < piece_of_interest.curSquare.rank:
                     next_piece_below_on_file = square
 
         return next_piece_above_on_file, next_piece_below_on_file
     
     # Gets the closest occupied squares on the same rank as the selected rook.
-    def get_closest_occupied_rank(self, rank_squares):
+    def get_closest_occupied_rank(self, piece_of_interest, rank_squares):
 
         # Identify the closest squares on the selected rook's rank that are occupied both left and right the rook.
         next_piece_left_on_rank = None
@@ -340,12 +347,12 @@ class ChessPiece(pg.sprite.Sprite):
 
         # Gets the closest occupied square to the left of the selected rook.
         for square in rank_squares:
-            if square.isOccupied and files_dict[square.file] > files_dict[self.curSquare.file]:
+            if square.isOccupied and files_dict[square.file] > files_dict[piece_of_interest.curSquare.file]:
                 next_piece_left_on_rank = square
 
         # Gets the closest occupied square to the right of the selected rook.
         for square in reversed_rank_squares:
-            if square.isOccupied and files_dict[square.file] < files_dict[self.curSquare.file]:
+            if square.isOccupied and files_dict[square.file] < files_dict[piece_of_interest.curSquare.file]:
                 next_piece_right_on_rank = square
 
         return next_piece_left_on_rank, next_piece_right_on_rank
@@ -355,7 +362,7 @@ class ChessPiece(pg.sprite.Sprite):
     def is_blocked_file(self, square_of_interest, file_squares):
 
         # Get the closest occupied squares on the same file as the selected rook.
-        next_piece_above_on_file, next_piece_below_on_file = self.get_closest_occupied_file(file_squares)
+        next_piece_above_on_file, next_piece_below_on_file = self.get_closest_occupied_file(self, file_squares)
 
         # If there are no other pieces on a given file, then there are no squares off limits, return false.
         if next_piece_below_on_file is None and next_piece_above_on_file is None:
@@ -380,7 +387,7 @@ class ChessPiece(pg.sprite.Sprite):
     def is_blocked_rank(self, square_of_interest, rank_squares):
         
         # Get the closest occupied squares on the same rank as the selected rook.
-        next_piece_left_on_rank, next_piece_right_on_rank = self.get_closest_occupied_rank(rank_squares)
+        next_piece_left_on_rank, next_piece_right_on_rank = self.get_closest_occupied_rank(self, rank_squares)
         
         # If there are no other pieces on a given rank, then there are no squares off limits, return false.
         if next_piece_left_on_rank is None and next_piece_right_on_rank is None:
@@ -409,33 +416,37 @@ class ChessPiece(pg.sprite.Sprite):
         # I.e. There is a piece in-between the queen and that square, then we cannot move there.
         if self.is_blocked_diagonal(square_of_interest, squares) and square_of_interest in self.legal_moves:
             self.legal_moves.remove(square_of_interest)
+            self.protected_squares.remove(square_of_interest)
 
-    def check_files_and_ranks(self, square_of_interest, file_squares, rank_squares, squares):
+    def check_files_and_ranks(self, square_of_interest, file_squares, rank_squares):
 
         # If the square of interest is not in the same file and it is not in the same rank as the square of interest, then we cannot move there.
         if square_of_interest.file != self.curSquare.file and square_of_interest.rank != self.curSquare.rank and square_of_interest in self.legal_moves:
             self.legal_moves.remove(square_of_interest)
+            self.protected_squares.remove(square_of_interest)
 
         # If the square of interest is on the same file as the selected rook, but there is no path from the rook to that square.
         # I.e. There is a piece inbetween the rook and that square, then we cannot move there.
         if self.is_blocked_file(square_of_interest, file_squares) and square_of_interest in self.legal_moves:
             self.legal_moves.remove(square_of_interest)
+            self.protected_squares.remove(square_of_interest)
 
         # If the square of interest is on the same rank as the selected rook, but there is no path from the rook to that square.
         # I.e. There is a piece inbetween the rook and that square, then we cannot move there.
         if self.is_blocked_rank(square_of_interest, rank_squares) and square_of_interest in self.legal_moves:
             self.legal_moves.remove(square_of_interest)
+            self.protected_squares.remove(square_of_interest)
 
 
     # Determines if the king is attempting to castle 'through' check. Returns true if yes, false otherwise.
-    def castle_through_check(self, square_of_interest, squares, pieces, our_king):
+    def castle_through_check(self, square_of_interest, squares, pieces, selected_piece, our_king):
         for piece in pieces: 
             if piece.colour != self.colour and piece != self and piece.name != 'King':
                 
                 # if piece.name == 'King':
                 #     piece.get_legal_moves(squares, pieces)
                 # else:
-                piece.get_legal_moves(squares, our_king)
+                piece.get_legal_moves(squares, pieces, selected_piece, our_king)
 
                 if square_of_interest.id == 'G1':
                     if piece.name != 'Pawn': # TODO: Need to fix this!!!
@@ -466,54 +477,452 @@ class ChessPiece(pg.sprite.Sprite):
     # Returns true if our piece is pinned to our king, and thus cannot move, false otherwise.
     # Need to determine if the closest piece to the king, along the checking piece's diagonal, is also the closest piece to the checking piece.
     # If it is, then we are pinned.
-    def is_pinned(self, piece, our_king):
+    def is_pinned_along_diagonal(self, possible_pinning_piece, our_king):
 
-        # If our king is in check along a diagonal.
-        if our_king.in_check_along_diagonal:
-            leftmost_pos_king, rightmost_pos_king, leftmost_neg_king, rightmost_neg_king = self.get_closest_occupied_diag(our_king.curSquare)
+        leftmost_pos_king, rightmost_pos_king, leftmost_neg_king, rightmost_neg_king = self.get_closest_occupied_diag(our_king.curSquare)
+        
+        # Get the closest pieces for the piece that is checking us.
+        leftmost_pos_self, rightmost_pos_self, leftmost_neg_self, rightmost_neg_self = self.get_closest_occupied_diag(possible_pinning_piece.curSquare)
+
+        if our_king:
 
             # If the closest piece to the left of the king on its positive diagonal is not the piece that is checking us, then it is blocking the check.
-            if leftmost_pos_king and leftmost_pos_king != our_king.checking_piece.curSquare.id:
-                
-                # Get the closest pieces for the piece that is checking us.
-                leftmost_pos_self, rightmost_pos_self, leftmost_neg_self, rightmost_neg_self = self.get_closest_occupied_diag(our_king.checking_piece.curSquare)
-                
-                # If the closest piece to the right of the piece checking us is the same piece that is closest to the left of the king, then that piece is pinned.
-                if rightmost_pos_self and rightmost_pos_self == leftmost_pos_king and leftmost_pos_king == piece.curSquare.id:
-                    print('a')
+            if leftmost_pos_king and leftmost_pos_king != possible_pinning_piece.curSquare.id:
+
+                # If the closest piece to the right of the checking-piece is the same piece that is closest to the left of the king, then that piece is pinned.
+                if rightmost_pos_self and rightmost_pos_self == leftmost_pos_king and leftmost_pos_king == self.curSquare.id:
                     return True
 
             # If the closest piece to the left of the king on its negative diagonal is not the piece that is checking us, then it is blocking the check.
-            elif leftmost_neg_king and leftmost_neg_king != our_king.checking_piece.curSquare.id:
-                
-                # Get the closest pieces for the piece that is checking us.
-                leftmost_pos_self, rightmost_pos_self, leftmost_neg_self, rightmost_neg_self = self.get_closest_occupied_diag(our_king.checking_piece.curSquare)
+            elif leftmost_neg_king and leftmost_neg_king != possible_pinning_piece.curSquare.id:
                 
                 # If the closest piece to the right of the piece checking us is the same piece that is closest to the left of the king, then that piece is pinned.
-                if rightmost_neg_self and rightmost_neg_self == leftmost_neg_king and leftmost_neg_king == piece.curSquare.id:
-                    print('b')
+                if rightmost_neg_self and rightmost_neg_self == leftmost_neg_king and leftmost_neg_king == self.curSquare.id:
                     return True
 
             # If the closest piece to the right of the king on its positive diagonal is not the piece that is checking us, then it is blocking the check.
-            elif rightmost_pos_king and rightmost_pos_king != our_king.checking_piece.curSquare.id:
-                
-                # Get the closest pieces for the piece that is checking us.
-                leftmost_pos_self, rightmost_pos_self, leftmost_neg_self, rightmost_neg_self = self.get_closest_occupied_diag(our_king.checking_piece.curSquare)
+            elif rightmost_pos_king and rightmost_pos_king != possible_pinning_piece.curSquare.id:
                 
                 # If the closest piece to the right of the piece checking us is the same piece that is closest to the left of the king, then that piece is pinned.
-                if leftmost_pos_self and leftmost_pos_self == rightmost_pos_king and rightmost_pos_king == piece.curSquare.id:
-                    print('c')
+                if leftmost_pos_self and leftmost_pos_self == rightmost_pos_king and rightmost_pos_king == self.curSquare.id:
                     return True
 
             # If the closest piece to the right of the king on its negative diagonal is not the piece that is checking us, then it is blocking the check.
-            elif rightmost_neg_king and rightmost_neg_king != our_king.checking_piece.curSquare.id and piece.curSquare.id == rightmost_neg_king:
-                
-                # Get the closest pieces for the piece that is checking us.
-                leftmost_pos_self, rightmost_pos_self, leftmost_neg_self, rightmost_neg_self = self.get_closest_occupied_diag(our_king.checking_piece.curSquare)
+            elif rightmost_neg_king and rightmost_neg_king != possible_pinning_piece.curSquare.id:
                 
                 # If the closest piece to the left of the piece checking us is the same piece that is closest to the right of the king, then that piece is pinned.
-                if leftmost_neg_self and leftmost_neg_self == rightmost_neg_king and rightmost_neg_king == piece.curSquare.id:
-                    print('d')
+                if leftmost_neg_self and leftmost_neg_self == rightmost_neg_king and rightmost_neg_king == self.curSquare.id:
                     return True
-
+        
         return False
+
+    # Returns true if our piece is pinned to our king, and thus cannot move, false otherwise.
+    # Need to determine if the closest piece to the king, along the checking piece's file, is also the closest piece to the checking piece.
+    # If it is, then we are pinned.
+    # Note. This function may need more work and/or testing. Not sure.
+    def is_pinned_along_file(self, squares, pieces, possible_pinning_piece, our_king):
+        
+        if self.curSquare.file != our_king.curSquare.file:
+            return False
+
+        file_squares = [square for square in squares if square.file == our_king.curSquare.file]
+
+        next_piece_above_on_file_king, next_piece_below_on_file_king = self.get_closest_occupied_file(our_king, file_squares)
+        next_piece_above_on_file_piece, next_piece_below_on_file_piece = self.get_closest_occupied_file(self, file_squares) ############
+
+        if our_king:
+
+            # If the closest piece above the king on the same file is not the piece that is checking us, then it is blocking the check.
+            # Then, if the next piece above the piece above the king is the possible pinning piece, and that piece is a queen or a rook, then we are pinned.
+            # TODO: May need to change ######### above to get the closest occupied square above the piece that is above the king...
+            #       It might not be the case that the piece above our king will always be self... Not sure...
+            # This is from white's perspective.
+            if next_piece_above_on_file_king and next_piece_above_on_file_king != possible_pinning_piece.curSquare:
+
+                if next_piece_above_on_file_piece == possible_pinning_piece.curSquare and next_piece_below_on_file_piece == our_king.curSquare:
+                    if possible_pinning_piece.name == 'Queen' or possible_pinning_piece.name == 'Rook':                        
+                        return True
+
+            # If the closest piece below the king on the same file is not the piece that is checking us, then it is blocking the check.
+            elif next_piece_below_on_file_king and next_piece_below_on_file_king != possible_pinning_piece.curSquare:
+
+                if next_piece_below_on_file_piece == possible_pinning_piece.curSquare and next_piece_above_on_file_piece == our_king.curSquare:
+                    if possible_pinning_piece.name == 'Queen' or possible_pinning_piece.name == 'Rook':
+                        return True
+        
+        return False
+
+    
+    # Returns true if our piece is pinned to our king, and thus cannot move, false otherwise.
+    # Need to determine if the closest piece to the king, along the checking piece's file, is also the closest piece to the checking piece.
+    # If it is, then we are pinned.
+    # Note. This function may need more work and/or testing. Not sure.
+    def is_pinned_along_rank(self, squares, pieces, possible_pinning_piece, our_king):
+        
+        if self.curSquare.rank != our_king.curSquare.rank:
+            return False
+
+        rank_squares = [square for square in squares if square.rank == our_king.curSquare.rank]
+
+        next_piece_left_of_king, next_piece_right_of_king = self.get_closest_occupied_rank(our_king, rank_squares)
+        next_piece_left_of_piece, next_piece_right_of_piece = self.get_closest_occupied_rank(self, rank_squares) ############
+
+        if our_king:
+
+            # If the closest piece above the king on the same file is not the piece that is checking us, then it is blocking the check.
+            # Then, if the next piece above the piece above the king is the possible pinning piece, and that piece is a queen or a rook, then we are pinned.
+            # TODO: May need to change ######### above to get the closest occupied square above the piece that is above the king...
+            #       It might not be the case that the piece above our king will always be self... Not sure...
+            # This is from white's perspective.
+            if next_piece_left_of_king and next_piece_left_of_king != possible_pinning_piece.curSquare:
+
+                if next_piece_left_of_piece == possible_pinning_piece.curSquare and next_piece_right_of_piece == our_king.curSquare:
+                    if possible_pinning_piece.name == 'Queen' or possible_pinning_piece.name == 'Rook':                        
+                        return True
+
+            # If the closest piece below the king on the same file is not the piece that is checking us, then it is blocking the check.
+            elif next_piece_right_of_king and next_piece_right_of_king != possible_pinning_piece.curSquare:
+
+                if next_piece_right_of_piece == possible_pinning_piece.curSquare and next_piece_left_of_piece == our_king.curSquare:
+                    if possible_pinning_piece.name == 'Queen' or possible_pinning_piece.name == 'Rook':
+                        return True
+        
+        return False
+
+    def get_piece(self, square_of_interest, pieces):
+        for piece in pieces:
+            if piece.curSquare == square_of_interest:
+                return piece
+
+    # If we are in check, then reset all of the king's variables to being False
+    def our_king_in_check(self, captured_piece, our_king):
+        
+        if our_king and our_king.in_check:
+            if our_king.curSquare not in our_king.checking_piece.legal_moves and captured_piece is None:
+                our_king.in_check = False
+
+                if our_king.checking_piece.name == 'Bishop':
+                    our_king.in_check_along_diagonal = False
+
+                elif our_king.checking_piece.name == 'Rook':
+
+                    if our_king.curSquare.file != our_king.checking_piece.curSquare.file:
+                        our_king.in_check_along_file = False
+
+                    elif our_king.curSquare.rank != our_king.checking_piece.curSquare.rank:
+                        our_king.in_check_along_rank = False
+
+                elif our_king.checking_piece.name == 'Queen':
+
+                    if our_king.curSquare.file != our_king.checking_piece.curSquare.file:
+                        our_king.in_check_along_file = False
+
+                    elif our_king.curSquare.rank != our_king.checking_piece.curSquare.rank:
+                        our_king.in_check_along_rank = False
+
+                    elif our_king.curSquare.diagonals in our_king.checking_piece.curSquare.diagonals:
+                        our_king.in_check_along_diagonal = False
+
+                elif our_king.checking_piece.name == 'Pawn':
+                    our_king.in_check_along_diagonal = False
+
+                elif our_king.checking_piece.name == 'Knight':
+                    our_king.in_check_from_knight = False
+
+                our_king.checking_piece = None
+
+            elif captured_piece and captured_piece == our_king.checking_piece:
+                print('Not in check anymore')
+                our_king.in_check = False
+
+                if captured_piece == 'Bishop':
+                    our_king.in_check_along_diagonal = False
+
+                elif captured_piece == 'Rook':
+
+                    if our_king.in_check_along_file:
+                        our_king.in_check_along_file = False
+
+                    elif our_king.in_check_along_rank:
+                        our_king.in_check_along_rank = False
+
+                elif our_king.checking_piece.name == 'Queen':
+
+                    if our_king.in_check_along_file:
+                        our_king.in_check_along_file = False
+
+                    elif our_king.in_check_along_rank:
+                        our_king.in_check_along_rank = False
+
+                    elif our_king.in_check_along_diagonal:
+                        our_king.in_check_along_diagonal = False
+
+                elif our_king.checking_piece.name == 'Pawn':
+                    our_king.in_check_along_diagonal = False
+
+                elif our_king.checking_piece.name == 'Knight':
+                    our_king.in_check_from_knight = False
+
+                our_king.checking_piece = None
+
+
+
+    def how_in_check(self, opponents_king):
+
+        method_of_checking = ''
+
+        if opponents_king.checking_piece.name == 'Bishop':
+            print('In check along a diagonal from a bishop.')
+            opponents_king.in_check_along_diagonal = True
+            method_of_checking = 'diagonal'
+
+        elif opponents_king.checking_piece.name == 'Rook':
+
+            if opponents_king.curSquare.file == opponents_king.checking_piece.curSquare.file:
+                print('In check along a file from a rook.')
+                opponents_king.in_check_along_file = True
+                method_of_checking = 'file'
+
+            elif opponents_king.curSquare.rank == opponents_king.checking_piece.curSquare.rank:
+                print('In check along a rank from a rook.')
+                opponents_king.in_check_along_rank = True
+                method_of_checking = 'rank'
+
+        elif opponents_king.checking_piece.name == 'Queen':
+
+            if opponents_king.curSquare.file == opponents_king.checking_piece.curSquare.file:
+                print('In check along a file from a queen.')
+                opponents_king.in_check_along_file = True
+                method_of_checking = 'file'
+
+            elif opponents_king.curSquare.rank == opponents_king.checking_piece.curSquare.rank:
+                print('In check along a rank from a queen.')
+                opponents_king.in_check_along_rank = True
+                method_of_checking = 'rank'
+
+            elif opponents_king.curSquare in opponents_king.checking_piece.curSquare.diagonals:
+                print('In check along a diagonal from a queen.')
+                opponents_king.in_check_along_diagonal = True
+                method_of_checking = 'diagonal'
+
+        elif opponents_king.checking_piece.name == 'Pawn':
+            print('In check along a diagonal from a pawn.')
+            opponents_king.in_check_along_diagonal = True
+            method_of_checking = 'diagonal'
+        
+        elif opponents_king.checking_piece.name == 'Knight':
+            print('In check from a knight.')
+            opponents_king.in_check_from_knight = True
+            method_of_checking = 'knight'
+
+        return method_of_checking
+
+
+    # Next, check if we are pinned to our king
+    def check_for_pins(self, pieces, squares, our_king):
+        if our_king:
+            last_checking_piece = None
+
+            for piece in [piece for piece in pieces if piece.colour != self.colour]:
+
+                if len(our_king.list_of_checking_pieces) != 0:
+                    last_checking_piece = list(our_king.list_of_checking_pieces)[-1]
+                else:
+                    last_checking_piece = piece
+
+                # Is the selected queen pinned to our king by the piece of interest, which has checked our king.
+                if self.is_pinned_along_diagonal(piece, our_king):
+                    self.pinned_along_diagonal = True
+
+                    if self.pinning_piece is None:
+                        self.pinning_piece = last_checking_piece
+
+                    for square in self.legal_move_copy:
+                        if square not in our_king.curSquare.diagonals and square in self.legal_moves:
+                            self.legal_moves.remove(square)
+                    
+                    break
+                elif not self.is_pinned_along_diagonal(piece, our_king) and self.pinned_along_diagonal and self.pinning_piece == piece:
+                    self.pinned_along_diagonal = False
+                    self.pinning_piece = None
+                    self.our_king_in_check(None, our_king)
+
+            
+                # Are we currently being pinned to our king along a file by the piece of interest?
+                if self.is_pinned_along_file(squares, pieces, piece, our_king):
+                    #print(f'{self.name} on {self.curSquare.id} we pinned')
+                    self.pinned_along_file = True
+                    self.pinning_piece = piece
+                    #print(f'{self.curSquare.id} Being pinned by the {self.pinning_piece.colour} {self.pinning_piece.name} on {self.pinning_piece.curSquare.id}')
+
+                    for square in self.legal_move_copy:
+                        if square.file != our_king.curSquare.file and square in self.legal_moves:
+                            self.legal_moves.remove(square)
+
+                elif not self.is_pinned_along_file(squares, pieces, piece, our_king) and self.pinned_along_file:
+                    #print(f'{self.name} {self.curSquare.id} aint pinned anymore')
+                    self.pinned_along_file = False
+                    self.pinning_piece = None
+                    self.our_king_in_check(None, our_king)
+
+
+                # Are we currently being pinned to our king along a rank by the piece of interest?
+                if self.is_pinned_along_rank(squares, pieces, piece, our_king):
+                    #print(f'{self.name} on {self.curSquare.id} we pinned')
+                    self.pinned_along_rank = True
+                    self.pinning_piece = piece
+                    #print(f'{self.curSquare.id} Being pinned by the {self.pinning_piece.colour} {self.pinning_piece.name} on {self.pinning_piece.curSquare.id}')
+
+                    for square in self.legal_move_copy:
+                        if square.rank != our_king.curSquare.rank and square in self.legal_moves:
+                            self.legal_moves.remove(square)
+
+                elif not self.is_pinned_along_rank(squares, pieces, piece, our_king) and self.pinned_along_rank:
+                    #print(f'{self.name} {self.curSquare.id} aint pinned anymore')
+                    self.pinned_along_rank = False
+                    self.pinning_piece = None
+                    self.our_king_in_check(None, our_king)
+
+    def check_remaining_squares(self, our_king, legal_move_copy):
+        for square in legal_move_copy:
+
+            if square in self.legal_moves:
+
+                # If the king was in check, but now isn't, and the bishop isn't the blocking piece.  Only remove squares on the bishop's diagonal if we are in check.
+                if our_king and our_king.checking_piece and len(our_king.list_of_checking_pieces) != 0:
+                    
+                    last_checking_piece = list(our_king.list_of_checking_pieces)[-1][0]
+                    # TODO: Add other cases, pinned along rile, rank...
+                    # If some piece of interest is pinned along a diagonal and our king is in check by some piece not in the piece of interest's legal moves, then the piece of interest cannot make any moves.
+                    # if self.pinned_along_diagonal and last_checking_piece.curSquare not in self.legal_moves:
+                    #     self.legal_moves.clear()
+                    #     break
+                    
+                        
+                    # In check along diagonal
+                    if square in self.legal_moves and our_king.in_check_along_diagonal:
+                        #print('cant really be here...')
+
+                        # If the square of interest is not on either of our king's diagonals, and it isn't on either of our king's checking-piece's diagonals.
+                        if square not in our_king.checking_piece.curSquare.diagonals:
+                            self.legal_moves.remove(square)
+                            continue
+                            
+                        # If the square of interest is on one of our king's diagonals, but it isn't on either of our king's checking-piece's diagonals.
+                        elif square in our_king.curSquare.diagonals and square not in our_king.checking_piece.curSquare.diagonals:
+                            if square in self.legal_moves:
+                                self.legal_moves.remove(square)
+                                continue
+
+                        # If the square of interest is on one of our king's checking-piece's diagonals , but it isn't on either of our king's diagonals.
+                        elif square in our_king.checking_piece.curSquare.diagonals and square not in our_king.curSquare.diagonals:
+                            if square in self.legal_moves:
+                                self.legal_moves.remove(square)      
+                                continue                  
+                        
+                        # If the square of interest is on one of our king's diagonals and it is on one of our king's checking-piece's diagonals.
+                        else:
+
+                            # If the square of interest is on a file right of our king and our king's checking-piece is on a file left of our king.
+                            # I.e. Our king is in-between our king's checking-piece and the square of interest, but the square of interest is on the wrong side.
+                            if files_dict[last_checking_piece.curSquare.file] < files_dict[our_king.curSquare.file] < files_dict[square.file]:
+                                if square in self.legal_moves:
+                                    self.legal_moves.remove(square)
+                                    continue
+                            
+                            # If the square of interest is on a file left of our king and our king's checking-piece is on a file right of our king.
+                            # I.e. Our king is in-between our king's checking-piece and the square of interest, but the square of interest is on the wrong side.
+                            elif files_dict[square.file] < files_dict[our_king.curSquare.file] < files_dict[last_checking_piece.curSquare.file]:
+                                if square in self.legal_moves:
+                                    self.legal_moves.remove(square)
+                                    continue
+                            
+                            # If the square of interest is on a file left of our king's checking-piece and our king is on a file left of it's checking-piece.
+                            # I.e. The checking-piece is in-between our king and the square of interest, but the square of interest is on the wrong side.
+                            elif files_dict[square.file] < files_dict[last_checking_piece.curSquare.file] < files_dict[our_king.curSquare.file]:
+                                if square in self.legal_moves:
+                                    self.legal_moves.remove(square)
+                                    continue
+                            
+                            # If the square of interest is on a file right of our king's checking-piece and our king is on a file right of it's checking-piece.
+                            # I.e. The checking-piece is in-between our king and the square of interest, but the square of interest is on the wrong side.
+                            elif files_dict[our_king.curSquare.file] < files_dict[last_checking_piece.curSquare.file] < files_dict[square.file]:
+                                if square in self.legal_moves:
+                                    self.legal_moves.remove(square)
+                                    continue
+
+                    # In check along file
+                    elif square in self.legal_moves and our_king.in_check_along_file:
+                        
+                        # Remove any squares that aren't on the same file as our king.
+                        if square.file != our_king.curSquare.file:
+                            self.legal_moves.remove(square)
+                            continue
+
+                        # If the square of interest is on the same file as our king.
+                        else:
+
+                            # If the square of interest is on a higher rank than our king and our king's checking-piece is on a lower rank than our king.
+                            # I.e. Our king is in-between our king's checking-piece and the square of interest, but the square of interest is on the wrong side.
+                            if last_checking_piece.curSquare.rank < our_king.curSquare.rank < square.rank:
+                                self.legal_moves.remove(square)
+                                continue
+                            
+                            # If the square of interest is on a lower rank than our king and our king's checking-piece is on a higher rank than our king.
+                            # I.e. Our king is in-between our king's checking-piece and the square of interest, but the square of interest is on the wrong side.
+                            elif square.rank < our_king.curSquare.rank < last_checking_piece.curSquare.rank:
+                                self.legal_moves.remove(square)
+                                continue
+                            
+                            # If the square of interest is on a lower rank than our king's checking-piece and our king is on a higher rank than it's checking-piece.
+                            # I.e. The checking-piece is in-between our king and the square of interest, but the square of interest is on the wrong side.
+                            elif square.rank < last_checking_piece.curSquare.rank < our_king.curSquare.rank:
+                                self.legal_moves.remove(square)
+                                continue
+                            
+                            # If the square of interest is on a higher rank than our king's checking-piece and our king is on a lower rank than it's checking-piece.
+                            # I.e. The checking-piece is in-between our king and the square of interest, but the square of interest is on the wrong side.
+                            elif our_king.curSquare.rank < last_checking_piece.curSquare.rank < square.rank:
+                                self.legal_moves.remove(square)
+                                continue
+
+                        
+
+                    # In check along rank
+                    elif square in self.legal_moves and our_king.in_check_along_rank:
+
+                        # If the square of interest is not on the same rank as our king, and thus not on the same rank as our king's checking-piece.
+                        if square.rank != our_king.curSquare.rank:
+                            self.legal_moves.remove(square)
+                            continue
+                                        
+                        # If the square of interest is on the same rank as our king, and thus on the same rank as our king's checking-piece.
+                        else:
+
+                            # If the square of interest is on a file left of our king and our king's checking-piece is on a file right of our king.
+                            # I.e. Our king is in-between our king's checking-piece and the square of interest, but the square of interest is on the wrong side.
+                            if files_dict[last_checking_piece.curSquare.file] < files_dict[our_king.curSquare.file] < files_dict[square.file]:
+                                self.legal_moves.remove(square)
+                                continue
+                            
+                            # If the square of interest is on a file right of our king and our king's checking-piece is on a file left of our king.
+                            # I.e. Our king is in-between our king's checking-piece and the square of interest, but the square of interest is on the wrong side.
+                            elif files_dict[square.file] < files_dict[our_king.curSquare.file] < files_dict[last_checking_piece.curSquare.file]:
+                                self.legal_moves.remove(square)
+                                continue
+                            
+                            # If the square of interest is on a file right of our king's checking-piece and our king is on a file left of it's checking-piece.
+                            # I.e. The checking-piece is in-between our king and the square of interest, but the square of interest is on the wrong side.
+                            elif files_dict[square.file] < files_dict[last_checking_piece.curSquare.file] < files_dict[our_king.curSquare.file]:
+                                self.legal_moves.remove(square)
+                                continue
+                            
+                            # If the square of interest is on a file left of our king's checking-piece and our king is on a file right of it's checking-piece.
+                            # I.e. The checking-piece is in-between our king and the square of interest, but the square of interest is on the wrong side.
+                            elif files_dict[our_king.curSquare.file] < files_dict[last_checking_piece.curSquare.file] < files_dict[square.file]:
+                                self.legal_moves.remove(square)
+                                continue
+
+                    elif square in self.legal_moves and our_king.in_check_from_knight:
+                        if square != our_king.checking_piece.curSquare:
+                            self.legal_moves.remove(square)

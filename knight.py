@@ -11,9 +11,11 @@ class Knight(ChessPiece):
         self.rect = self.image.get_rect(center = self.curSquare.center)
 
 
-    def get_legal_moves(self, squares, our_king):
+    def get_legal_moves(self, squares, pieces, selected_piece, our_king):
+
         possible_squares = []
         self.legal_moves = []
+        self.protected_squares = []
 
         # Get all possible squares that lie in the 'L-shape' that a knight travels in.
         self.vertically_first(possible_squares, squares)
@@ -22,38 +24,39 @@ class Knight(ChessPiece):
         # Append all of those squares to self.legal_moves.
         for square in possible_squares:
             self.legal_moves.append(square)
+            self.protected_squares.append(square)
 
         # Remove those squares that correspond to illegal moves.
         # The only illegal move for a knight is if the square of interest is occupied by a piece from our own team. 
+        # Do not remove those squares from the list of protected squares.
         for square in possible_squares:
             if square.occupied_colour == self.colour:
                 self.legal_moves.remove(square)
 
+        # Remove our current square as a potential move.
+        if self.curSquare in self.legal_moves:
+            self.legal_moves.remove(self.curSquare)
+
+        # Remove all instances of self.curSquare
+        while True:
+            if self.curSquare in self.protected_squares:
+                self.protected_squares.remove(self.curSquare)
+            else:
+                break
+            
         # Now that we have a working list of legal moves for the selected rook.  We need to deal with what happens if our king is in check.
         # Go through all squares legally available to the selected rook.  If our king is in check and the selected rook cannot either take 
         # the piece or block the check, then remove those squares from its legal moves.
-        legal_move_copy = []
+        self.legal_move_copy = []
         for square in self.legal_moves:
-            legal_move_copy.append(square)
+            self.legal_move_copy.append(square)
+
+        # Check for pins
+        self.check_for_pins(pieces, squares, our_king)
+
+        self.check_remaining_squares(our_king, self.legal_move_copy)
 
         # If the selected bishop has legal moves that wouldn't block or take the checking piece, then we must remove those pieces from its legal moves.
-        if our_king:
-            for square in legal_move_copy:
-                
-                # In check along a diagonal.
-                if square in self.legal_moves and our_king.in_check_along_diagonal:
-                    print('Diag check')
-
-                    # If the selected knight is pinned to the king, then we can't move it at all.
-                    if self.is_pinned(self, our_king):
-                        print('we are pinned')
-                        print('hjsdfasdfj s jsdjd ')
-                        self.legal_moves.clear()
-                        break
-
-                    # The case when the selected bishop isn't pinned to the king, but we are in check, so it's only available move is to block the king.
-                    #our_king.checking_piece.curSquare.rank <= square.rank <= our_king.curSquare.rank or our_king.curSquare.rank < square.rank < our_king.checking_piece.rank
-                    if our_king.in_check and files_dict[square.file] > files_dict[our_king.curSquare.file] > files_dict[our_king.checking_piece.curSquare.file] or files_dict[square.file] < files_dict[our_king.curSquare.file] < files_dict[our_king.checking_piece.curSquare.file] or files_dict[square.file] < files_dict[our_king.checking_piece.curSquare.file] < files_dict[our_king.curSquare.file] or files_dict[square.file] > files_dict[our_king.checking_piece.curSquare.file] > files_dict[our_king.curSquare.file]:
-                        self.legal_moves.remove(square)
+        self.our_king_in_check(None, our_king)
 
         return [square.id for square in self.legal_moves]
