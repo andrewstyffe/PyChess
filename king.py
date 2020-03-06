@@ -75,7 +75,6 @@ class King(ChessPiece):
                         self.legal_moves.append(square)
                         self.protected_squares.append(square)
 
-
         # Now sort through those square ids by eliminating the illegal ones.
         for square in possible_moves:
 
@@ -97,36 +96,25 @@ class King(ChessPiece):
                         # We need to check if the king is able to capture the piece of interest or not.
                         if square in self.legal_moves:
 
-                            if piece.name == 'Pawn':
-                                if square in piece.taking_squares or square == piece.curSquare or square in piece.protected_squares:
-                                    if square.occupied_colour and square.occupied_colour != self.colour:
-                                        for cur_piece in [piece for piece in pieces if piece.colour != self.colour]:
-                                            if cur_piece.name == 'Pawn':
-                                                if square in cur_piece.taking_squares and square in self.legal_moves:
-                                                    self.legal_moves.remove(square)
-                                                    break
-                                            else:
-                                                if square in cur_piece.legal_moves and square in self.legal_moves:
-                                                    self.legal_moves.remove(square)
-                                                    break
-                                    else:
-                                        self.legal_moves.remove(square)
-                            
-                            else:
-                                if square in piece.legal_moves or square == piece.curSquare or square in piece.protected_squares:
-                                    if square.occupied_colour and square.occupied_colour != self.colour:
-                                        for cur_piece in [piece for piece in pieces if piece.colour != self.colour]:
-                                            if cur_piece.name == 'Pawn':
-                                                if square in cur_piece.taking_squares and square in self.legal_moves:
-                                                    self.legal_moves.remove(square)
-                                                    break
-                                            else:
-                                                if square in cur_piece.protected_squares and square in self.legal_moves:
-                                                    self.legal_moves.remove(square)
-                                                    break
-                                    else:
-                                        self.legal_moves.remove(square)
+                            if square in piece.legal_moves or square == piece.curSquare or square in piece.protected_squares:
+                                if square.occupied_colour and square.occupied_colour != self.colour:
+                                    for cur_piece in [piece for piece in pieces if piece.colour != self.colour]:
+                                        if cur_piece.name == 'Pawn':
+                                            if square in cur_piece.taking_squares and square in self.legal_moves:
+                                                print(f'Removing {square.id}')
+                                                self.legal_moves.remove(square)
+                                                break
+                                        else:
+                                            if square in cur_piece.protected_squares and square in self.legal_moves:
+                                                print(f'Now removing {square.id} cause {cur_piece.curSquare.id} {[square.id for square in cur_piece.protected_squares]}')
+                                                self.legal_moves.remove(square)
+                                                break
+                                else:
+                                    self.legal_moves.remove(square)
 
+        self.legal_move_copy = []
+        for square in self.legal_moves:
+            self.legal_move_copy.append(square)
         # Now, remove all squares that would result in us 'moving-into' check.
         # Or, if we are already in check, remove any squares that would result in us still being in check.
         # I.e. If we are in check along a diagonal, file or rank, we cannot simply move to the next square on that
@@ -134,7 +122,8 @@ class King(ChessPiece):
         if self.in_check:
             
             # For each of the squares around the king, we need to check if that square represents a legal move for any of the opponent's pieces.
-            for square in possible_moves:
+            for square in self.legal_move_copy:
+                print(square.id)
                 for piece in pieces:
                     if piece.colour != self.colour and square in self.legal_moves:
                         
@@ -142,19 +131,18 @@ class King(ChessPiece):
                         # Then if the square of interest is on the same diagonal as the checking piece, we must remove that square - unless
                         # the square is the checking piece's current square and it is not defended by any of it's own pieces.
                         if piece.name != 'Pawn':
-                            if self.in_check_along_diagonal or square in piece.legal_moves:
-                                if square in self.checking_piece.curSquare.diagonals:
-                                    if square != self.checking_piece.curSquare:
-                                        print(f'Removing {square.id} from king"s legal moves')
-                                        self.legal_moves.remove(square)
-                                    
-                                    # Square of interest is the checking piece's current square.  Check if that piece is defended at all.
-                                    # If it is, remove the square of interest from the selected king's legal moves.
-                                    else:
-                                        for cur_piece in [piece for piece in pieces if piece.colour != self.colour]:
-                                            if piece.curSquare in cur_piece.legal_moves:
-                                                print(f'Checking piece is defended by {cur_piece}.  Cannot capture the checking piece.')
-                                                self.legal_moves.remove(square)
+                            if square in self.checking_piece.curSquare.diagonals:
+                                if square != self.checking_piece.curSquare:
+                                    print(f'Removing {square.id} from king"s legal moves')
+                                    self.legal_moves.remove(square)
+                                
+                                # Square of interest is the checking piece's current square.  Check if that piece is defended at all.
+                                # If it is, remove the square of interest from the selected king's legal moves.
+                                else:
+                                    for cur_piece in [piece for piece in pieces if piece.colour != self.colour]:
+                                        if piece.curSquare in cur_piece.legal_moves:
+                                            print(f'Checking piece is defended by {cur_piece}.  Cannot capture the checking piece.')
+                                            self.legal_moves.remove(square)
                         
                         else:
                             if square in piece.taking_squares:

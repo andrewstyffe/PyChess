@@ -427,15 +427,21 @@ class ChessPiece(pg.sprite.Sprite):
 
         # If the square of interest is on the same file as the selected rook, but there is no path from the rook to that square.
         # I.e. There is a piece inbetween the rook and that square, then we cannot move there.
-        if self.is_blocked_file(square_of_interest, file_squares) and square_of_interest in self.legal_moves:
-            self.legal_moves.remove(square_of_interest)
-            self.protected_squares.remove(square_of_interest)
+        if self.is_blocked_file(square_of_interest, file_squares):
+
+            if square_of_interest in self.legal_moves:
+                self.legal_moves.remove(square_of_interest)
+            if square_of_interest in self.protected_squares:
+                self.protected_squares.remove(square_of_interest)
 
         # If the square of interest is on the same rank as the selected rook, but there is no path from the rook to that square.
         # I.e. There is a piece inbetween the rook and that square, then we cannot move there.
-        if self.is_blocked_rank(square_of_interest, rank_squares) and square_of_interest in self.legal_moves:
-            self.legal_moves.remove(square_of_interest)
-            self.protected_squares.remove(square_of_interest)
+        if self.is_blocked_rank(square_of_interest, rank_squares):
+            
+            if square_of_interest in self.legal_moves:
+                self.legal_moves.remove(square_of_interest)
+            if square_of_interest in self.protected_squares:
+                self.protected_squares.remove(square_of_interest)
 
 
     # Determines if the king is attempting to castle 'through' check. Returns true if yes, false otherwise.
@@ -446,7 +452,10 @@ class ChessPiece(pg.sprite.Sprite):
                 # if piece.name == 'King':
                 #     piece.get_legal_moves(squares, pieces)
                 # else:
-                piece.get_legal_moves(squares, pieces, selected_piece, our_king)
+
+                # for piece in pieces:
+                #     if piece != self:
+                #         piece.get_legal_moves(squares, pieces, selected_piece, our_king)
 
                 if square_of_interest.id == 'G1':
                     if piece.name != 'Pawn': # TODO: Need to fix this!!!
@@ -494,21 +503,21 @@ class ChessPiece(pg.sprite.Sprite):
                     return True
 
             # If the closest piece to the left of the king on its negative diagonal is not the piece that is checking us, then it is blocking the check.
-            elif leftmost_neg_king and leftmost_neg_king != possible_pinning_piece.curSquare.id:
+            if leftmost_neg_king and leftmost_neg_king != possible_pinning_piece.curSquare.id:
                 
                 # If the closest piece to the right of the piece checking us is the same piece that is closest to the left of the king, then that piece is pinned.
                 if rightmost_neg_self and rightmost_neg_self == leftmost_neg_king and leftmost_neg_king == self.curSquare.id:
                     return True
 
             # If the closest piece to the right of the king on its positive diagonal is not the piece that is checking us, then it is blocking the check.
-            elif rightmost_pos_king and rightmost_pos_king != possible_pinning_piece.curSquare.id:
+            if rightmost_pos_king and rightmost_pos_king != possible_pinning_piece.curSquare.id:
                 
                 # If the closest piece to the right of the piece checking us is the same piece that is closest to the left of the king, then that piece is pinned.
                 if leftmost_pos_self and leftmost_pos_self == rightmost_pos_king and rightmost_pos_king == self.curSquare.id:
                     return True
 
             # If the closest piece to the right of the king on its negative diagonal is not the piece that is checking us, then it is blocking the check.
-            elif rightmost_neg_king and rightmost_neg_king != possible_pinning_piece.curSquare.id:
+            if rightmost_neg_king and rightmost_neg_king != possible_pinning_piece.curSquare.id:
                 
                 # If the closest piece to the left of the piece checking us is the same piece that is closest to the right of the king, then that piece is pinned.
                 if leftmost_neg_self and leftmost_neg_self == rightmost_neg_king and rightmost_neg_king == self.curSquare.id:
@@ -544,7 +553,7 @@ class ChessPiece(pg.sprite.Sprite):
                         return True
 
             # If the closest piece below the king on the same file is not the piece that is checking us, then it is blocking the check.
-            elif next_piece_below_on_file_king and next_piece_below_on_file_king != possible_pinning_piece.curSquare:
+            if next_piece_below_on_file_king and next_piece_below_on_file_king != possible_pinning_piece.curSquare:
 
                 if next_piece_below_on_file_piece == possible_pinning_piece.curSquare and next_piece_above_on_file_piece == our_king.curSquare:
                     if possible_pinning_piece.name == 'Queen' or possible_pinning_piece.name == 'Rook':
@@ -568,21 +577,20 @@ class ChessPiece(pg.sprite.Sprite):
         next_piece_left_of_piece, next_piece_right_of_piece = self.get_closest_occupied_rank(self, rank_squares) ############
 
         if our_king:
-
             # If the closest piece above the king on the same file is not the piece that is checking us, then it is blocking the check.
             # Then, if the next piece above the piece above the king is the possible pinning piece, and that piece is a queen or a rook, then we are pinned.
             # TODO: May need to change ######### above to get the closest occupied square above the piece that is above the king...
             #       It might not be the case that the piece above our king will always be self... Not sure...
             # This is from white's perspective.
             if next_piece_left_of_king and next_piece_left_of_king != possible_pinning_piece.curSquare:
-
+                
                 if next_piece_left_of_piece == possible_pinning_piece.curSquare and next_piece_right_of_piece == our_king.curSquare:
                     if possible_pinning_piece.name == 'Queen' or possible_pinning_piece.name == 'Rook':                        
                         return True
 
             # If the closest piece below the king on the same file is not the piece that is checking us, then it is blocking the check.
-            elif next_piece_right_of_king and next_piece_right_of_king != possible_pinning_piece.curSquare:
-
+            if next_piece_right_of_king and next_piece_right_of_king != possible_pinning_piece.curSquare:
+                
                 if next_piece_right_of_piece == possible_pinning_piece.curSquare and next_piece_left_of_piece == our_king.curSquare:
                     if possible_pinning_piece.name == 'Queen' or possible_pinning_piece.name == 'Rook':
                         return True
@@ -722,13 +730,14 @@ class ChessPiece(pg.sprite.Sprite):
     def check_for_pins(self, pieces, squares, our_king):
         if our_king:
             last_checking_piece = None
-
+        
             for piece in [piece for piece in pieces if piece.colour != self.colour]:
-
+                
                 if len(our_king.list_of_checking_pieces) != 0:
                     last_checking_piece = list(our_king.list_of_checking_pieces)[-1]
                 else:
                     last_checking_piece = piece
+
 
                 # Is the selected queen pinned to our king by the piece of interest, which has checked our king.
                 if self.is_pinned_along_diagonal(piece, our_king):
@@ -742,6 +751,7 @@ class ChessPiece(pg.sprite.Sprite):
                             self.legal_moves.remove(square)
                     
                     break
+                
                 elif not self.is_pinned_along_diagonal(piece, our_king) and self.pinned_along_diagonal and self.pinning_piece == piece:
                     self.pinned_along_diagonal = False
                     self.pinning_piece = None
@@ -768,7 +778,7 @@ class ChessPiece(pg.sprite.Sprite):
 
                 # Are we currently being pinned to our king along a rank by the piece of interest?
                 if self.is_pinned_along_rank(squares, pieces, piece, our_king):
-                    #print(f'{self.name} on {self.curSquare.id} we pinned')
+                    print(f'{self.name} on {self.curSquare.id} we pinned')
                     self.pinned_along_rank = True
                     self.pinning_piece = piece
                     #print(f'{self.curSquare.id} Being pinned by the {self.pinning_piece.colour} {self.pinning_piece.name} on {self.pinning_piece.curSquare.id}')

@@ -2,6 +2,7 @@ import pygame as pg
 from pygame.locals import QUIT, KEYUP, K_ESCAPE, Rect
 from pygame.draw import rect
 from chess_pieces import *
+import subprocess
 import square
 import king
 import queen
@@ -35,6 +36,7 @@ pieces = pg.sprite.Group()
 white_pieces = pg.sprite.Group()
 black_pieces = pg.sprite.Group()
 squares = pg.sprite.Group()
+
 
 def main():
     
@@ -221,17 +223,50 @@ def format_move(selected_piece, square_of_interest, fromSquare, team_alternator,
     # Update the legal moves for every piece on the board now.
     # After the move is made, we need to update the available moves for every piece on the board (I think).
     for piece in pieces:
-        if piece.name == 'King':
-            piece.get_legal_moves(squares, pieces, selected_piece, our_king)
-        else:
-            if piece.name == 'Pawn':
-                if piece == selected_piece:
-                    piece.first_move = False
-                    piece.taking_squares = []
-            #selected_piece.get_legal_moves(squares, our_king)
-            piece.get_legal_moves(squares, pieces, selected_piece, our_king)
+        if piece.name == 'Pawn' and piece == selected_piece:
+            piece.first_move = False
+            piece.taking_squares = []
 
-    #print(f'Nowwwwwwwww its {[square.id for square in selected_piece.legal_moves]}')
+            # If the selected pawn is promoting, then we need to remove that pawn from the list of pieces, as well as the set of pieces in which it lies.
+            # Then we need to add the desired promoted-to piece to pieces, as well as the set of pieces to which it belongs.
+            if check_promotion(piece):
+                print('YO WE BOUTTA LEVEL THE HECK UP!!!')
+                
+                # Run promotion box as a subprocess.
+                new_piece_name = subprocess.check_output(["python3", "promotion_box.py", f"{selected_piece.colour}"]).strip().decode('ascii')
+
+                # Remove the selected pawn from the sets it belongs to.
+                pg.draw.rect(board, selected_piece.curSquare.colour, (selected_piece.curSquare.x, selected_piece.curSquare.y, 100, 100))
+                pieces.remove(selected_piece)
+
+                if piece.colour == 'white':
+                    white_pieces.remove(selected_piece)
+                else:
+                    black_pieces.remove(selected_piece)
+
+                # Add the promoted piece to our set of pieces.
+                if new_piece_name == 'Queen':
+                    selected_piece = queen.Queen(selected_piece.curSquare, selected_piece.colour)
+
+                elif new_piece_name == 'Rook':
+                    selected_piece = rook.Rook(selected_piece.curSquare, selected_piece.colour)
+
+                elif new_piece_name == 'Bishop':
+                    selected_piece = bishop.Bishop(selected_piece.curSquare, selected_piece.colour)
+
+                elif new_piece_name == 'Knight':
+                    selected_piece = knight.Knight(selected_piece.curSquare, selected_piece.colour)
+                
+                our_pieces.add(selected_piece)
+                pieces.add(selected_piece)
+
+                # Draw in the new piece and continue.
+                selected_piece.update(board, fromSquare, square_of_interest)
+                selected_piece.draw(board)
+                selected_piece.get_legal_moves(squares, pieces, selected_piece, our_king)
+                break
+
+        piece.get_legal_moves(squares, pieces, selected_piece, our_king)
     
 
     # Check if the move just made delivered a check to the opponent's king. If it did, then set up the appropriate checking variables.
@@ -244,30 +279,14 @@ def format_move(selected_piece, square_of_interest, fromSquare, team_alternator,
 
         # Update the legal moves for every piece on the board now.
         # After the move is made, we need to update the available moves for every piece on the board (I think).
-        for piece in opponents_pieces:
-            if piece.name == 'King':
-                piece.get_legal_moves(squares, pieces, selected_piece, opponents_king)
-            else:
-                if piece.name == 'Pawn':
-                    if piece == selected_piece:
-                        piece.first_move = False
-                        piece.taking_squares = []
-                #selected_piece.get_legal_moves(squares, our_king)
-                piece.get_legal_moves(squares, pieces, selected_piece, opponents_king)
+        for piece in pieces:
+            piece.get_legal_moves(squares, pieces, selected_piece, opponents_king)
 
     else:
         # Update the legal moves for every piece on the board now.
         # After the move is made, we need to update the available moves for every piece on the board (I think).
-        for piece in our_pieces:
-            if piece.name == 'King':
-                piece.get_legal_moves(squares, pieces, selected_piece, our_king)
-            else:
-                if piece.name == 'Pawn':
-                    if piece == selected_piece:
-                        piece.first_move = False
-                        piece.taking_squares = []
-                #selected_piece.get_legal_moves(squares, our_king)
-                piece.get_legal_moves(squares, pieces, selected_piece, our_king)
+        for piece in pieces:
+            piece.get_legal_moves(squares, pieces, selected_piece, opponents_king)
 
     print(f'Now its available moves are {[square.id for square in selected_piece.legal_moves]}')
     print(f'{selected_piece.name} moved from {fromSquare.id} to {square_of_interest.id}.  Its new square is {selected_piece.curSquare.id}\n')
@@ -276,11 +295,20 @@ def format_move(selected_piece, square_of_interest, fromSquare, team_alternator,
     num_piece_with_zero_moves = 0
     if opponents_king.in_check:
         for piece in opponents_pieces:
-            if len(piece.legal_moves) == 0:
-                num_piece_with_zero_moves += 1
+            if piece.name == 'Pawn':
+                if len(piece.taking_squares) == 0 or len(piece.legal_moves) == 0:
+                    num_piece_with_zero_moves += 1
                 #print(num_piece_with_zero_moves)
+                else:
+                    if len(piece.legal_moves) != 0:
+                        print(f'Our {piece.name} on {piece.curSquare.id} can move to {[square.id for square in piece.legal_moves]} to get you out of check!')
+
             else:
-                print(f'Our {piece.name} on {piece.curSquare.id} can move to {[square.id for square in piece.legal_moves]} to get you out of check!')
+                if len(piece.legal_moves) != 0:
+                    print(f'Our {piece.name} on {piece.curSquare.id} can move to {[square.id for square in piece.legal_moves]} to get you out of check!')
+
+                else:
+                    num_piece_with_zero_moves += 1
                 #break
         if num_piece_with_zero_moves == len(opponents_pieces):
             print('CHECKMATE!!!')
@@ -293,6 +321,16 @@ def format_move(selected_piece, square_of_interest, fromSquare, team_alternator,
         return selected_piece
     else:
         return next(team_alternator), selected_piece
+
+
+# Returns true if a pawn is about to promote, false otherwise.
+def check_promotion(selected_piece):
+    if selected_piece.colour == 'white':
+        if selected_piece.curSquare.rank == 8:
+            return True
+    else:
+        if selected_piece.curSquare.rank == 1:
+            return True
 
 
 # Check if opponent's king is in check.  If it is, they can't make just any move. Determines how the king is in check.

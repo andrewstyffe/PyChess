@@ -128,7 +128,7 @@ class Pawn(ChessPiece):
             # If one square up from curSquare isn't in legal_moves and that square isn't occupied then add it to legal_moves
             one_square_up = self.get_square(f'{self.curSquare.file}{self.curSquare.rank + 1}', squares)
             
-            if one_square_up not in self.legal_moves and not one_square_up.isOccupied:
+            if one_square_up and one_square_up not in self.legal_moves and not one_square_up.isOccupied:
                 self.legal_moves.append(one_square_up)
             
             # If one or two squares down from curSquare is in legal_moves, then remove it from legal_moves since pawns can't move backwards

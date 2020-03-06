@@ -43,7 +43,7 @@ class Queen(ChessPiece):
                 self.check_diagonals(square, squares)
 
             # Check the squares on the selected queen's files and ranks, and remove any illegal ones.
-            if square in file_squares or square in rank_squares:
+            if square in file_squares + rank_squares:
                 self.check_files_and_ranks(square, file_squares, rank_squares)
             
         # Lastly, if the selected queen's current square is in self.legal_moves, remove it.
