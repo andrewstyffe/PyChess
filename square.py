@@ -17,6 +17,7 @@ class Square(pg.sprite.Sprite):
         self.y = coords[1]
         self.isOccupied = False
         self.occupied_colour = None
+        self.piece_taken = False
 
         self.pos_diagonal = []
         self.neg_diagonal = []

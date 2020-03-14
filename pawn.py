@@ -122,8 +122,9 @@ class Pawn(ChessPiece):
                 one_square_up = self.get_square(f'{self.curSquare.file}{self.curSquare.rank + 1}', squares)
                 two_squares_up = self.get_square(f'{self.curSquare.file}{self.curSquare.rank + 2}', squares)
                 
-                if not two_squares_up.isOccupied and not one_square_up.isOccupied:
-                    self.legal_moves.append(two_squares_up)
+                if one_square_up and two_squares_up:
+                    if not two_squares_up.isOccupied and not one_square_up.isOccupied:
+                        self.legal_moves.append(two_squares_up)
 
             # If one square up from curSquare isn't in legal_moves and that square isn't occupied then add it to legal_moves
             one_square_up = self.get_square(f'{self.curSquare.file}{self.curSquare.rank + 1}', squares)
