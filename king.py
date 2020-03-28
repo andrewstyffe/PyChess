@@ -17,7 +17,7 @@ class King(ChessPiece):
         self.pinned_pieces = []
 
         self.image = pg.image.load(f"./{self.colour}_{self.name.lower()}.png")
-        self.image = pg.transform.scale(self.image, (50, 50))
+        self.image = pg.transform.scale(self.image, (100, 100))
         self.rect = self.image.get_rect(center = self.curSquare.center)
 
 
@@ -161,10 +161,10 @@ class King(ChessPiece):
                                                 self.legal_moves.remove(square)
 
 
-            if len(self.legal_moves) == 0:
-                print('Our king has no legal moves!')
-            else:
-                print(f'Our kings available moves are {[square.id for square in self.legal_moves]}')
+            # if len(self.legal_moves) == 0:
+            #     print('Our king has no legal moves!')
+            # else:
+            #     print(f'Our kings available moves are {[square.id for square in self.legal_moves]}')
             #print([square.id for square in self.legal_moves])
                 # If we are in check along a diagonal, then remove those squares that lie on the same diagonal as the 
                 # piece currently checking the king.

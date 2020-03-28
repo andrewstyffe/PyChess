@@ -15,7 +15,7 @@ class Pawn(ChessPiece):
 
         # Assign a picture to the pawn
         self.image = pg.image.load(f"./{self.colour}_{self.name.lower()}.png")
-        self.image = pg.transform.scale(self.image, (50, 50))
+        self.image = pg.transform.scale(self.image, (100, 100))
         self.rect = self.image.get_rect(center = self.curSquare.center)
 
 

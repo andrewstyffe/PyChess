@@ -675,55 +675,55 @@ class ChessPiece(pg.sprite.Sprite):
 
 
 
-    def how_in_check(self, opponents_king):
+    def how_in_check(self, king):
 
         method_of_checking = ''
 
-        if opponents_king.checking_piece.name == 'Bishop':
+        if king.checking_piece.name == 'Bishop':
             print('In check along a diagonal from a bishop.')
-            opponents_king.in_check_along_diagonal = True
+            king.in_check_along_diagonal = True
             method_of_checking = 'diagonal'
 
-        elif opponents_king.checking_piece.name == 'Rook':
+        elif king.checking_piece.name == 'Rook':
 
-            if opponents_king.curSquare.file == opponents_king.checking_piece.curSquare.file:
+            if king.curSquare.file == king.checking_piece.curSquare.file:
                 print('In check along a file from a rook.')
-                opponents_king.in_check_along_file = True
+                king.in_check_along_file = True
                 method_of_checking = 'file'
 
-            elif opponents_king.curSquare.rank == opponents_king.checking_piece.curSquare.rank:
+            elif king.curSquare.rank == king.checking_piece.curSquare.rank:
                 print('In check along a rank from a rook.')
-                opponents_king.in_check_along_rank = True
+                king.in_check_along_rank = True
                 method_of_checking = 'rank'
 
-        elif opponents_king.checking_piece.name == 'Queen':
+        elif king.checking_piece.name == 'Queen':
 
-            if opponents_king.curSquare.file == opponents_king.checking_piece.curSquare.file:
+            if king.curSquare.file == king.checking_piece.curSquare.file:
                 print('In check along a file from a queen.')
-                opponents_king.in_check_along_file = True
+                king.in_check_along_file = True
                 method_of_checking = 'file'
 
-            elif opponents_king.curSquare.rank == opponents_king.checking_piece.curSquare.rank:
+            elif king.curSquare.rank == king.checking_piece.curSquare.rank:
                 print('In check along a rank from a queen.')
-                opponents_king.in_check_along_rank = True
+                king.in_check_along_rank = True
                 method_of_checking = 'rank'
 
-            elif opponents_king.curSquare in opponents_king.checking_piece.curSquare.diagonals:
+            elif king.curSquare in king.checking_piece.curSquare.diagonals:
                 print('In check along a diagonal from a queen.')
-                opponents_king.in_check_along_diagonal = True
+                king.in_check_along_diagonal = True
                 method_of_checking = 'diagonal'
 
-        elif opponents_king.checking_piece.name == 'Pawn':
+        elif king.checking_piece.name == 'Pawn':
             print('In check along a diagonal from a pawn.')
-            opponents_king.in_check_along_diagonal = True
+            king.in_check_along_diagonal = True
             method_of_checking = 'diagonal'
         
-        elif opponents_king.checking_piece.name == 'Knight':
+        elif king.checking_piece.name == 'Knight':
             print('In check from a knight.')
-            opponents_king.in_check_from_knight = True
+            king.in_check_from_knight = True
             method_of_checking = 'knight'
-
-        return method_of_checking
+        
+        return king
 
 
     # Next, check if we are pinned to our king
@@ -734,7 +734,7 @@ class ChessPiece(pg.sprite.Sprite):
             for piece in [piece for piece in pieces if piece.colour != self.colour]:
                 
                 if len(our_king.list_of_checking_pieces) != 0:
-                    last_checking_piece = list(our_king.list_of_checking_pieces)[-1]
+                    last_checking_piece = list(our_king.list_of_checking_pieces)[-1][0]
                 else:
                     last_checking_piece = piece
 
@@ -811,7 +811,6 @@ class ChessPiece(pg.sprite.Sprite):
                         
                     # In check along diagonal
                     if square in self.legal_moves and our_king.in_check_along_diagonal:
-                        #print('cant really be here...')
 
                         # If the square of interest is not on either of our king's diagonals, and it isn't on either of our king's checking-piece's diagonals.
                         if square not in our_king.checking_piece.curSquare.diagonals:

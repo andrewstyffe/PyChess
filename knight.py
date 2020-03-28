@@ -7,7 +7,7 @@ class Knight(ChessPiece):
         self.name = 'Knight'
 
         self.image = pg.image.load(f"./{self.colour}_{self.name.lower()}.png")
-        self.image = pg.transform.scale(self.image, (50, 50))
+        self.image = pg.transform.scale(self.image, (100, 100))
         self.rect = self.image.get_rect(center = self.curSquare.center)
 
 
@@ -44,8 +44,8 @@ class Knight(ChessPiece):
             else:
                 break
             
-        # Now that we have a working list of legal moves for the selected rook.  We need to deal with what happens if our king is in check.
-        # Go through all squares legally available to the selected rook.  If our king is in check and the selected rook cannot either take 
+        # Now that we have a working list of legal moves for the selected knight.  We need to deal with what happens if our king is in check.
+        # Go through all squares legally available to the selected knight.  If our king is in check and the selected knight cannot either take 
         # the piece or block the check, then remove those squares from its legal moves.
         self.legal_move_copy = []
         for square in self.legal_moves:
@@ -57,6 +57,10 @@ class Knight(ChessPiece):
         self.check_remaining_squares(our_king, self.legal_move_copy)
 
         # If the selected bishop has legal moves that wouldn't block or take the checking piece, then we must remove those pieces from its legal moves.
+        # if our_king:
+        #     print(our_king.in_check)
+        #     print(our_king.in_check_along_diagonal)
+        #     print([square.id for square in self.legal_moves])
         self.our_king_in_check(None, our_king)
 
         return [square.id for square in self.legal_moves]
